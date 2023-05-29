@@ -31,7 +31,7 @@ tasks.test {
 }
 
 jacoco {
-    toolVersion = "0.8.8"
+    toolVersion = libs.versions.jacoco.get()
     reportsDirectory.set(layout.buildDirectory.dir("jacoco"))
 }
 
