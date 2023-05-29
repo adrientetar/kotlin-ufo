@@ -19,6 +19,9 @@ kotlin {
 dependencies {
     implementation("com.googlecode.plist:dd-plist:" + libs.versions.plist.get())
     implementation("io.github.pdvrieze.xmlutil:serialization:" + libs.versions.xmlutil.get())
+
+    testImplementation(kotlin("test"))
+    testImplementation("com.google.truth:truth:" + libs.versions.truth.get())
 }
 
 tasks.test {

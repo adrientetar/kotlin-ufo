@@ -86,7 +86,7 @@ class FontInfoValues(private val dict: NSDictionary) {
         get() = dict.getString("styleMapFamilyName")
 
     val styleMapStyleName: String
-        get() = dict.getString("styleMapFamilyName")
+        get() = dict.getString("styleMapStyleName")
 
     val styleName: String
         get() = dict.getString("styleName")
@@ -105,6 +105,9 @@ class FontInfoValues(private val dict: NSDictionary) {
 
     val xHeight: Int
         get() = dict.getInt("xHeight")
+
+    val year: Int
+        get() = dict.getInt("year")
 }
 
 internal fun NSDictionary.getFloat(key: String, default: Float = 0f): Float =

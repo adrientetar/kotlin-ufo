@@ -14,6 +14,14 @@ import kotlin.io.path.readText
  * UFO font reader, with [ufo] as its path.
  */
 class UFOReader(private val ufo: Path) {
+    fun readMetaInfo(): MetaInfoValues {
+        val metaInfoDict = PropertyListParser.parse(
+            ufo.resolve("metainfo.plist")
+        ) as NSDictionary
+
+        return MetaInfoValues(metaInfoDict)
+    }
+
     fun readFontInfo(): FontInfoValues {
         val fontInfoDict = PropertyListParser.parse(
             ufo.resolve("fontinfo.plist")
