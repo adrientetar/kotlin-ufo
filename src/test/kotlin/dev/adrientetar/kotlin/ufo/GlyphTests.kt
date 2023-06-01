@@ -8,14 +8,20 @@ import kotlin.test.Test
 
 class GlyphTests {
     @Test
-    fun testPopulateGlyphs() {
+    fun testInvalidRead() {
+        // TODO
+    }
+
+    @Test
+    fun testPopulate() {
+        // Populate glyphs and verify (test the setters)
         val glyphs = mutableListOf<GlyphValues>()
         populateGlyphs(glyphs)
         verifyGlyphs(glyphs)
     }
 
     @Test
-    fun testReadGlyphs() {
+    fun testRead() {
         // Read from the sample font and verify (test the reader)
         val ufo = Paths.get(getResourceURI("/TestFont.ufo"))
         val reader = UFOReader(ufo)
@@ -24,7 +30,7 @@ class GlyphTests {
     }
 
     @Test
-    fun testWriteGlyphs() {
+    fun testWrite() {
         // Set up an in-memory filesystem
         val fs = Jimfs.newFileSystem(Configuration.unix())
         val memPath = fs.getPath("/TestFont.ufo")
@@ -107,5 +113,3 @@ class GlyphTests {
         }
     }
 }
-
-internal fun contourOf(vararg points: Point) = Contour(points.toList())

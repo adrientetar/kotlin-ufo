@@ -3,10 +3,13 @@ package dev.adrientetar.kotlin.ufo
 import com.google.common.jimfs.Configuration
 import com.google.common.jimfs.Jimfs
 import com.google.common.truth.Truth.assertThat
+import org.junit.jupiter.api.assertThrows
+import java.nio.file.Files
 import java.nio.file.Paths
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
+import kotlin.io.path.writeText
 import kotlin.test.Test
 
 /**
@@ -14,7 +17,37 @@ import kotlin.test.Test
  */
 class FontInfoTests {
     @Test
-    fun testPopulateFontInfo() {
+    fun testInvalidRead() {
+        val fs = Jimfs.newFileSystem(Configuration.unix())
+        val memPath = fs.getPath("/path/to/TestFont.ufo")
+
+        Files.createDirectories(memPath)
+        val fontInfoPath = memPath.resolve("fontinfo.plist")
+        val reader = UFOReader(memPath)
+
+        // When fontinfo.plist is missing, throw UFOLibException
+        // cause: NoSuchFileException
+        assertThrows<UFOLibException> {
+            reader.readFontInfo()
+        }
+
+        // When fontinfo.plist is empty, throw UFOLibException
+        // cause: NullPointerException
+        Files.createFile(fontInfoPath)
+        assertThrows<UFOLibException> {
+            reader.readFontInfo()
+        }
+
+        // When fontinfo.plist is invalid, throw UFOLibException
+        // cause: SAXParseException
+        fontInfoPath.writeText("<foo></bar>")
+        assertThrows<UFOLibException> {
+            reader.readFontInfo()
+        }
+    }
+
+    @Test
+    fun testPopulate() {
         // Populate font info and verify (test the setters)
         val info = FontInfoValues()
         populateFontInfo(info)
@@ -22,7 +55,7 @@ class FontInfoTests {
     }
 
     @Test
-    fun testReadFontInfo() {
+    fun testRead() {
         // Read from the sample font and verify (test the reader)
         val ufo = Paths.get(getResourceURI("/TestFont.ufo"))
         val reader = UFOReader(ufo)
@@ -31,7 +64,7 @@ class FontInfoTests {
     }
 
     @Test
-    fun testWriteFontInfo() {
+    fun testWrite() {
         // Set up an in-memory filesystem
         val fs = Jimfs.newFileSystem(Configuration.unix())
         val memPath = fs.getPath("/TestFont.ufo")

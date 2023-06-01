@@ -5,18 +5,96 @@ import com.dd.plist.NSObject
 import com.dd.plist.NSString
 import com.dd.plist.XMLPropertyListWriter
 import kotlinx.serialization.encodeToString
+import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.io.path.ExperimentalPathApi
+import kotlin.io.path.deleteRecursively
+import kotlin.io.path.name
 
 /**
- * UFO font writer, with [ufo] as its path.
+ * UFO font writer.
+ *
+ * @param ufo The path to write the UFO to
+ * @param clearDirectory Whether to clear the path and create an empty folder,
+ *  see [clearDirectory]. Defaults to true
  */
-class UFOWriter(private val ufo: Path) {
+// TODO: look into doing incremental write (without clearing all previous contents)
+class UFOWriter(
+    private val ufo: Path,
+    clearDirectory: Boolean = true
+) {
     init {
-        // TODO: clear out the folder, if it exists
+        if (clearDirectory) {
+            clearDirectory()
+        }
+    }
 
-        // This will throw if `ufo` exists and is not a directory
-        Files.createDirectories(ufo)
+    @OptIn(ExperimentalPathApi::class)
+    fun clearDirectory() {
+        // Clear out the folder, if it exists
+        try {
+            ufo.deleteRecursively()
+        } catch (ex: IOException) {
+            throw UFOLibException("Failed to remove existing UFO content", ex)
+        }
+
+        // Create directory
+        try {
+            Files.createDirectories(ufo)
+        } catch (ex: IOException) {
+            throw UFOLibException("Failed to create UFO directory", ex)
+        }
+    }
+
+    fun writeFontInfo(values: FontInfoValues) {
+        val path = ufo.resolve("fontinfo.plist")
+        path.writePlist(values.dict)
+    }
+
+    fun writeGlyphs(glyphs: List<GlyphValues>) {
+        // Gather name to filename mapping
+        val contentsDict = glyphs.associateBy(
+            { it.name },
+            { it.name?.toFileName() }
+        )
+
+        // Write layercontents.plist
+        run {
+            val array = NSArray(
+                NSArray(
+                    NSString("foreground"),
+                    NSString("glyphs")
+                )
+            )
+            ufo.resolve("layercontents.plist").writePlist(array)
+        }
+
+        // Create glyphs/ and write contents.plist
+        val glyphsDir = ufo.resolve("glyphs")
+        try {
+            Files.createDirectories(glyphsDir)
+        } catch (ex: IOException) {
+            throw UFOLibException("Failed to create glyphs directory", ex)
+        }
+
+        run {
+            val root = NSObject.fromJavaObject(contentsDict)
+            glyphsDir.resolve("contents.plist").writePlist(root)
+        }
+
+        // Write the GLIF files
+        for (glyph in glyphs) {
+            val fileName = checkNotNull(contentsDict[glyph.name])
+            val glifPath = glyphsDir.resolve(fileName)
+
+            glifPath.writeXML(glyph.glif)
+        }
+    }
+
+    fun writeLib(values: LibValues) {
+        val path = ufo.resolve("lib.plist")
+        path.writePlist(values.dict)
     }
 
     fun writeMetaInfo() {
@@ -24,73 +102,60 @@ class UFOWriter(private val ufo: Path) {
             creator = "dev.adrientetar.kotlin.ufo"
             formatVersion = 3
         }
-        XMLPropertyListWriter.write(values.dict, ufo.resolve("metainfo.plist"))
+        val path = ufo.resolve("metainfo.plist")
+
+        path.writePlist(values.dict)
     }
 
-    fun writeFontInfo(values: FontInfoValues) {
-        XMLPropertyListWriter.write(values.dict, ufo.resolve("fontinfo.plist"))
-    }
-
-    fun writeGlyphs(glyphs: List<GlyphValues>) {
-        // Write layercontents.plist
-        run {
-            val layerContentsPath = ufo.resolve("layercontents.plist")
-            val array = NSArray(
-                NSArray(
-                    NSString("foreground"),
-                    NSString("glyphs")
-                )
-            )
-
-            XMLPropertyListWriter.write(array, layerContentsPath)
-        }
-
-        // Create glyphs/ and write contents.plist
-        val glyphsDir = ufo.resolve("glyphs/")
-        Files.createDirectories(glyphsDir)
-
-        val contentsPath = glyphsDir.resolve("contents.plist")
-        val contentsDict = glyphs.associateBy(
-            { it.name },
-            { it.name?.toGLIFFileName() }
-        )
-        XMLPropertyListWriter.write(
-            NSObject.fromJavaObject(contentsDict),
-            contentsPath
-        )
-
-        // Write the GLIF files
-        for (glyph in glyphs) {
-            val fileName = checkNotNull(contentsDict[glyph.name])
-            val glifPath = glyphsDir.resolve(fileName)
-
-            val content = niceXML.encodeToString(glyph.glif)
-            Files.writeString(glifPath, content)
+    private fun Path.writePlist(root: NSObject) {
+        try {
+            XMLPropertyListWriter.write(root, this)
+        } catch (ex: Exception) {
+            throw UFOLibException("Failed to write $name", ex)
         }
     }
 
-    fun writeLib(values: LibValues) {
-        XMLPropertyListWriter.write(values.dict, ufo.resolve("lib.plist"))
-    }
+    private inline fun <reified T> Path.writeXML(value: T) =
+        try {
+            val content = niceXML.encodeToString(value)
+            Files.writeString(this, content)
+        } catch (ex: Exception) {
+            throw UFOLibException("Failed to write $name", ex)
+        }
 }
 
 // TODO: add existing file names parameter
-private fun String.toGLIFFileName(): String {
-    val b = StringBuilder(length)
-    val startsWithDot = isNotEmpty() && this[0] == '.'
+internal fun String.toFileName(): String {
+    val filtered = run {
+        val b = StringBuilder(length)
 
-    if (startsWithDot) {
-        b.append("_")
-    }
-    for (ch in drop(if (startsWithDot) 1 else 0)) {
-        when {
-            ch in illegalCharacters -> b.append("_")
-            ch != ch.lowercaseChar() -> b.append("${ch}_")
-            else -> b.append(ch)
+        // Replace an initial period with '_'
+        val startsWithDot = isNotEmpty() && this[0] == '.'
+        if (startsWithDot) {
+            b.append('_')
         }
-    }
 
-    return b.toString().take(255)
+        // Filter characters and limit length to 255
+        for (ch in drop(if (startsWithDot) 1 else 0)) {
+            when {
+                ch in illegalCharacters -> b.append('_')
+                ch != ch.lowercaseChar() -> b.append("${ch}_")
+                else -> b.append(ch)
+            }
+        }
+        b.toString().take(255)
+    }
+    // Test for illegal file names
+    val result = filtered
+        .split(".")
+        .joinToString(".") { part ->
+            when (part) {
+                in reservedFileNames -> "_$part"
+                else -> part
+            }
+        }
+
+    return result
 }
 
 // Restrictions are taken mostly from

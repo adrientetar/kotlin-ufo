@@ -119,3 +119,5 @@ data class Anchor(
     val y: Float,
     val name: String?
 )
+
+fun contourOf(vararg points: Point) = Contour(points.toList())

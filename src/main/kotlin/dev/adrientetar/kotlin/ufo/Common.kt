@@ -66,21 +66,23 @@ internal fun NSDictionary.putOptISO8601Date(key: String, value: OffsetDateTime?)
     putOpt(key, dateTimeFormatter.format(value))
 }
 
-private fun NSObject.toList_(): List<*>? =
-    (
-        (this as? NSArray)?.toJavaObject() as? Array<*>
-    )?.toList()
+internal fun NSObject.toDictionary(): NSDictionary = this as NSDictionary
 
-internal inline fun <reified T> NSObject.toList(): List<T>? =
-    toList_()?.filterIsInstance<T>()
+internal inline fun <reified T> NSObject.toList(): List<T> =
+    toList_().filterIsInstance<T>()
 
-internal fun <T> NSObject.toListOfList(): List<List<T>>? =
+internal fun NSObject.toListOfListOfStrings(): List<List<String>> =
     toList_()
-        ?.map { (it as? Array<*>)?.toList() }
-        ?.filterIsInstance<List<T>>()
+        .map { (it as? Array<*>)?.toList() }
+        .filterIsInstance<List<String>>()
 
-internal fun NSObject.toStringMap(): Map<String, String>? =
-    (toJavaObject() as? Map<*, *>)
-        ?.map { (k, v) -> Pair(k, v) }
-        ?.filterIsInstance<Pair<String, String>>()
-        ?.toMap()
+internal fun NSObject.toMapOfStrings(): Map<String, String> =
+    (toJavaObject() as Map<*, *>)
+        .map { (k, v) -> Pair(k, v) }
+        .filterIsInstance<Pair<String, String>>()
+        .toMap()
+
+private fun NSObject.toList_(): List<*> =
+    (
+        (this as NSArray).toJavaObject() as Array<*>
+    ).toList()
