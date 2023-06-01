@@ -16,6 +16,11 @@ With this library, one can generate [UFO fonts], which in turn allows using the 
 This project is currently in very early stage and cannot be used to make fonts. Only UFO 3 is
 supported.
 
+- Font info ✅
+- Foreground layer glyphs ✅
+- Font lib ✅
+- Remaining: other layers, features, groups/kerning, other libs, data...
+
 Usage
 -----
 
@@ -26,27 +31,45 @@ import com.google.common.truth.Truth.assertThat
 import dev.adrientetar.kotlin.ufo.UFOReader
 import java.nio.file.Paths
 
-val ufo = Paths.get("/usr/share/MyFont-Regular.ufo")
+val path = Paths.get("/usr/share/MyFont-Regular.ufo")
 
-val reader = UFOReader(ufo)
+val reader = UFOReader(path)
 val info = reader.readFontInfo()
 
 assertThat(info.familyName).isEqualTo("My Font")
 assertThat(info.styleName).isEqualTo("Regular")
 ```
 
-See [the tests](/src/test/kotlin/dev/adrientetar/kotlin/ufo/UFOReaderTests.kt) for more sample code.
+### Write
+
+```kotlin
+import dev.adrientetar.kotlin.ufo.FontInfoValues
+import dev.adrientetar.kotlin.ufo.UFOWriter
+import java.nio.file.Paths
+
+val path = Paths.get("/usr/share/MyFont-Regular.ufo")
+
+val info = FontInfoValues().apply {
+    familyName = "My Font"
+    styleName = "Regular"
+}
+
+val writer = UFOWriter(path)
+writer.writeFontInfo(info)
+```
+
+See [the tests](/src/test/kotlin/dev/adrientetar/kotlin/ufo) for more sample code.
 
 Contributions
 -------------
 
 I would like to have help with the following:
 
+- Adding support to read/write more things (with tests 😀)
 - Writing tests: we can port some tests from [fontTools.ufoLib], and write to a
   [virtual filesystem][jimfs] to keep the tests fast to run.
-- Adding a pipeline to [validate exported API][binary-compatibility-validator], so that we don’t export
-  unintended symbols in the library and can monitor backwards incompatible changes.
-- Adding support to read/write more things (with tests 😀)
+- Adding a pipeline to [validate exported API][binary-compatibility-validator], so that we don’t 
+  export unintended symbols in the library and can monitor backwards incompatible changes.
 
 If you want to make a non-trivial contribution, consider coordinating with me and sharing design
 details beforehand if applicable. Thanks!
