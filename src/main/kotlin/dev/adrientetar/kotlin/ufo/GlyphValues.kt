@@ -6,26 +6,36 @@ import nl.adaptivity.xmlutil.serialization.XmlElement
 import nl.adaptivity.xmlutil.serialization.XmlSerialName
 
 // TODO: make internal and extract an interface for the public API
-class GlyphValues(private val glif: Glif) {
-    val anchors: List<Anchor>
+class GlyphValues(internal val glif: Glif = Glif()) {
+    val anchors: List<Anchor>?
         get() = glif.anchors
 
-    val components: List<Component>
-        get() = glif.outline?.components ?: emptyList()
+    var components: List<Component>?
+        get() = glif.outline.components
+        set(value) { glif.outline.components = value }
 
-    val contours: List<Contour>
-        get() = glif.outline?.contours ?: emptyList()
+    var contours: List<Contour>?
+        get() = glif.outline.contours
+        set(value) { glif.outline.contours = value }
 
-    val name: String
+    var height: Float?
+        get() = glif.advance.height
+        set(value) { glif.advance.height = value }
+
+    var name: String?
         get() = glif.name
+        set(value) { glif.name = value }
 
-    val unicodes: List<Int>
-        get() = glif.unicodes.map {
+    val unicodes: List<Int>?
+        get() = glif.unicodes?.map {
             it.hex.toLong(16).toInt()
         }
 
-    val width: Float
-        get() = glif.advance?.width ?: 0f
+    var width: Float?
+        get() = glif.advance.width
+        set(value) { glif.advance.width = value }
+
+    override fun toString(): String = "GlyphValues(name=$name)"
 }
 
 // TODO: it seems like to preserve the order of contour/components, we need to manual parse
@@ -33,25 +43,26 @@ class GlyphValues(private val glif: Glif) {
 @Serializable
 @SerialName("glyph")
 data class Glif(
-    val name: String,
-    val format: Int,
+    var name: String? = null,
+    var format: Int = 2,
 
     @XmlElement(true)
-    val advance: Advance?,
+    val advance: Advance = Advance(),
     @XmlElement(true)
     @XmlSerialName("unicode", "", "")
-    val unicodes: List<Unicode>,
+    var unicodes: List<Unicode>? = null,
     @XmlElement(true)
     @XmlSerialName("anchor", "", "")
-    val anchors: List<Anchor>,
+    var anchors: List<Anchor>? = null,
     @XmlElement(true)
-    val outline: Outline?
+    val outline: Outline = Outline()
 )
 
 @Serializable
 @SerialName("advance")
 data class Advance(
-    val width: Float
+    var height: Float? = null,
+    var width: Float? = null
 )
 
 @Serializable
@@ -65,11 +76,11 @@ data class Unicode(
 data class Outline(
     @XmlElement(true)
     @XmlSerialName("component", "", "")
-    val components: List<Component>,
+    var components: List<Component>? = null,
 
     @XmlElement(true)
     @XmlSerialName("contour", "", "")
-    val contours: List<Contour>
+    var contours: List<Contour>? = null
 )
 
 @Serializable

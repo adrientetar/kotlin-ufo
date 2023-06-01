@@ -8,6 +8,7 @@ dependencyResolutionManagement {
             version("xmlutil", "0.85.0")
 
             version("jacoco", "0.8.10")
+            version("jimfs", "1.2")
             version("truth", "1.1.3")
         }
     }

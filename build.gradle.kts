@@ -23,6 +23,7 @@ dependencies {
 
     testImplementation(kotlin("test"))
     testImplementation("com.google.truth:truth:" + libs.versions.truth.get())
+    testImplementation("com.google.jimfs:jimfs:" + libs.versions.jimfs.get())
 }
 
 tasks.test {

@@ -1,13 +1,12 @@
 package dev.adrientetar.kotlin.ufo
 
 import com.dd.plist.NSArray
-import com.dd.plist.NSDictionary
-import com.dd.plist.NSNumber
+import com.dd.plist.NSObject
 import com.dd.plist.NSString
 import com.dd.plist.XMLPropertyListWriter
+import kotlinx.serialization.encodeToString
 import java.nio.file.Files
 import java.nio.file.Path
-import java.time.OffsetDateTime
 
 /**
  * UFO font writer, with [ufo] as its path.
@@ -21,67 +20,19 @@ class UFOWriter(private val ufo: Path) {
     }
 
     fun writeMetaInfo() {
-        val dict = NSDictionary().apply {
-            put("creator", "dev.adrientetar.kotlin.ufo")
-            put("formatVersion", 3)
+        val values = MetaInfoValues().apply {
+            creator = "dev.adrientetar.kotlin.ufo"
+            formatVersion = 3
         }
-        XMLPropertyListWriter.write(dict, ufo.resolve("metainfo.plist"))
+        XMLPropertyListWriter.write(values.dict, ufo.resolve("metainfo.plist"))
     }
 
-    fun writeFontInfo(
-        ascender: Int,
-        blueValues: List<Int>,
-        capHeight: Int,
-        copyright: String,
-        date: OffsetDateTime,
-        descender: Int,
-        designer: String,
-        designerURL: String,
-        familyName: String,
-        italicAngle: Float,
-        manufacturer: String,
-        manufacturerURL: String,
-        otherBlues: List<Int>,
-        styleName: String,
-        unitsPerEm: Int,
-        versionMajor: Int,
-        versionMinor: Int,
-        xHeight: Int,
-    ) {
-        val dict = NSDictionary().apply {
-            put("familyName", familyName)
-            put("copyright", copyright)
-            put("openTypeHeadCreated", dateTimeFormatter.format(date))
-            put("openTypeNameDesigner", designer)
-            put("openTypeNameDesignerURL", designerURL)
-            put("openTypeNameManufacturer", manufacturer)
-            put("openTypeNameManufacturerURL", manufacturerURL)
-            put("unitsPerEm", unitsPerEm)
-            put("versionMajor", versionMajor)
-            put("versionMinor", versionMinor)
-
-            put("styleName", styleName)
-            put("ascender", ascender)
-            put("capHeight", capHeight)
-            put("descender", descender)
-            put("italicAngle", italicAngle)
-            put("xHeight", xHeight)
-
-            put(
-                "postscriptBlueValues",
-                NSArray(*blueValues.map { NSNumber(it) }.toTypedArray())
-            )
-            put(
-                "postscriptOtherBlues",
-                NSArray(*otherBlues.map { NSNumber(it) }.toTypedArray())
-            )
-        }
-
-        XMLPropertyListWriter.write(dict, ufo.resolve("fontinfo.plist"))
+    fun writeFontInfo(values: FontInfoValues) {
+        XMLPropertyListWriter.write(values.dict, ufo.resolve("fontinfo.plist"))
     }
 
-    fun writeGlyphs() {
-        // Write layercontents
+    fun writeGlyphs(glyphs: List<GlyphValues>) {
+        // Write layercontents.plist
         run {
             val layerContentsPath = ufo.resolve("layercontents.plist")
             val array = NSArray(
@@ -91,43 +42,55 @@ class UFOWriter(private val ufo: Path) {
                 )
             )
 
-            XMLPropertyListWriter.write(array, ufo.resolve("fontinfo.plist"))
+            XMLPropertyListWriter.write(array, layerContentsPath)
         }
 
         // Create glyphs/ and write contents.plist
-        val glyphsPath = ufo.resolve("glyphs/")
-        Files.createDirectories(glyphsPath)
+        val glyphsDir = ufo.resolve("glyphs/")
+        Files.createDirectories(glyphsDir)
 
-        // TODO: write glyphs/contents.plist
+        val contentsPath = glyphsDir.resolve("contents.plist")
+        val contentsDict = glyphs.associateBy(
+            { it.name },
+            { it.name?.toGLIFFileName() }
+        )
+        XMLPropertyListWriter.write(
+            NSObject.fromJavaObject(contentsDict),
+            contentsPath
+        )
+
+        // Write the GLIF files
+        for (glyph in glyphs) {
+            val fileName = checkNotNull(contentsDict[glyph.name])
+            val glifPath = glyphsDir.resolve(fileName)
+
+            val content = niceXML.encodeToString(glyph.glif)
+            Files.writeString(glifPath, content)
+        }
     }
 
-    fun writeLib(glyphOrder: List<String>) {
-        val dict = NSDictionary().apply {
-            put(
-                "public.glyphOrder",
-                glyphOrder
-            )
-        }
-
-        XMLPropertyListWriter.write(dict, ufo.resolve("lib.plist"))
+    fun writeLib(values: LibValues) {
+        XMLPropertyListWriter.write(values.dict, ufo.resolve("lib.plist"))
     }
 }
 
-private fun String.toUFOFileName(): String {
-    val filtered = buildString {
-        val startsWithDot = this[0] == '.'
-        if (startsWithDot) {
-            append("_")
+// TODO: add existing file names parameter
+private fun String.toGLIFFileName(): String {
+    val b = StringBuilder(length)
+    val startsWithDot = isNotEmpty() && this[0] == '.'
+
+    if (startsWithDot) {
+        b.append("_")
+    }
+    for (ch in drop(if (startsWithDot) 1 else 0)) {
+        when {
+            ch in illegalCharacters -> b.append("_")
+            ch != ch.lowercaseChar() -> b.append("${ch}_")
+            else -> b.append(ch)
         }
-        for (ch in drop(if (startsWithDot) 1 else 0)) {
-            when {
-                ch in illegalCharacters -> append("_")
-                ch != ch.lowercaseChar() -> append("${ch}_")
-                else -> append(ch)
-            }
-        }
-    }.take(255)
-    return filtered
+    }
+
+    return b.toString().take(255)
 }
 
 // Restrictions are taken mostly from

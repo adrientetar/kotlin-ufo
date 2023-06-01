@@ -3,7 +3,7 @@ package dev.adrientetar.kotlin.ufo
 import com.dd.plist.NSDictionary
 import com.dd.plist.PropertyListParser
 import kotlinx.serialization.decodeFromString
-import nl.adaptivity.xmlutil.serialization.XML
+import java.nio.file.NoSuchFileException
 import java.nio.file.Path
 import kotlin.io.path.readText
 
@@ -34,27 +34,31 @@ class UFOReader(private val ufo: Path) {
         // Read foreground layer name
         val layerContents = PropertyListParser.parse(
             ufo.resolve("layercontents.plist")
-        ).toArray<Array<String>>()
-        val foregroundLayerFolder =
-            layerContents.firstOrNull()?.lastOrNull()?.plus("/") ?: "glyphs/"
+        ).toListOfList<String>() ?: return sequenceOf()
+        val foregroundLayerFolder = run {
+            val name = layerContents.firstOrNull()?.lastOrNull()
+            name?.plus("/") ?: "glyphs/"
+        }
 
         // Read glyph names according to glyph order
-        val glifDict = PropertyListParser.parse(
+        val contentsDict = PropertyListParser.parse(
             ufo.resolve(foregroundLayerFolder + "contents.plist")
-        ).toStringMap()
-        // TODO: reuse previous parse
+        ).toStringMap() ?: return sequenceOf()
+        // TODO: reuse previous parse?
         val lib = readLib()
+        // TODO: should we use the order from contents.plist as well?
         val glyphNames = ufoGlyphOrder(
-            glifDict.keys,
-            lib["public.glyphOrder"] as? List<String>
+            contentsDict.keys,
+            lib.glyphOrder
         )
 
         return sequence {
-            for (glifFileName in glyphNames.map { glifDict[it] }) {
+            // `mapNotNull` will protect us against missing glyphs in the glyph order
+            for (glifFileName in glyphNames.mapNotNull { contentsDict[it] }) {
+                val glifPath = ufo.resolve(foregroundLayerFolder + glifFileName)
                 val glif = niceXML.decodeFromString<Glif>(
-                    ufo.resolve(foregroundLayerFolder + glifFileName).readText()
+                    glifPath.readText()
                 )
-
                 yield(GlyphValues(glif))
             }
         }
@@ -63,21 +67,17 @@ class UFOReader(private val ufo: Path) {
     fun readGlyph(name: String): GlyphValues = TODO()
 
     fun readLib(): LibValues {
-        val libDict = PropertyListParser.parse(
-            ufo.resolve("lib.plist")
-        ) as NSDictionary
+        val libDict = try {
+            PropertyListParser.parse(
+                ufo.resolve("lib.plist")
+            ) as? NSDictionary
+        } catch (ex: NoSuchFileException) {
+            null
+        }
 
-        return LibValues(libDict)
+        return LibValues(libDict ?: NSDictionary())
     }
 }
-
-internal val niceXML: XML
-    get() = XML {
-        defaultPolicy {
-            pedantic = false
-            ignoreUnknownChildren()
-        }
-    }
 
 internal fun ufoGlyphOrder(allGlyphs: Collection<String>, glyphOrder: List<String>?): Collection<String> =
     when (glyphOrder) {

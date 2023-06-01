@@ -23,20 +23,12 @@
         <integer>-20</integer>
       </dict>
       <dict>
-        <key>x</key>
-        <integer>30</integer>
-      </dict>
-      <dict>
         <key>y</key>
         <integer>500</integer>
       </dict>
       <dict>
         <key>y</key>
         <integer>-200</integer>
-      </dict>
-      <dict>
-        <key>y</key>
-        <integer>700</integer>
       </dict>
       <dict>
         <key>angle</key>
@@ -53,14 +45,6 @@
         <integer>0</integer>
         <key>y</key>
         <integer>700</integer>
-      </dict>
-      <dict>
-        <key>angle</key>
-        <integer>135</integer>
-        <key>x</key>
-        <integer>20</integer>
-        <key>y</key>
-        <integer>0</integer>
       </dict>
     </array>
     <key>italicAngle</key>
@@ -288,7 +272,7 @@
     <key>postscriptIsFixedPitch</key>
     <false/>
     <key>postscriptNominalWidthX</key>
-    <integer>400</integer>
+    <integer>480</integer>
     <key>postscriptOtherBlues</key>
     <array>
       <integer>-250</integer>

@@ -42,14 +42,17 @@ Contributions
 
 I would like to have help with the following:
 
-- Writing tests: we can port some tests from [fontTools.ufoLib], and perhaps write to a
+- Writing tests: we can port some tests from [fontTools.ufoLib], and write to a
   [virtual filesystem][jimfs] to keep the tests fast to run.
-- Adding support to read/write more things (and it would be kinda cool to add tests 😀)
+- Adding a pipeline to [validate exported API][binary-compatibility-validator], so that we don’t export
+  unintended symbols in the library and can monitor backwards incompatible changes.
+- Adding support to read/write more things (with tests 😀)
 
 If you want to make a non-trivial contribution, consider coordinating with me and sharing design
 details beforehand if applicable. Thanks!
 
 [UFO fonts]: https://unifiedfontobject.org/
+[binary-compatibility-validator]: https://github.com/Kotlin/binary-compatibility-validator
 [fontTools.ufoLib]: https://github.com/fonttools/fonttools/blob/main/Tests/ufoLib/UFO3_test.py
 [fontmake]: https://github.com/googlefonts/fontmake
 [jimfs]: https://github.com/google/jimfs
