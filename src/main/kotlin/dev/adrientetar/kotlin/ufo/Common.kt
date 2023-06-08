@@ -77,10 +77,10 @@ internal fun NSObject.toListOfListOfStrings(): List<List<String>> =
         .filterIsInstance<List<String>>()
 
 internal fun NSObject.toMapOfStrings(): Map<String, String> =
-    (toJavaObject() as Map<*, *>)
-        .map { (k, v) -> Pair(k, v) }
-        .filterIsInstance<Pair<String, String>>()
-        .toMap()
+    (this as NSDictionary).hashMap
+        .mapValues {
+            it.value.toJavaObject() as String
+        }
 
 private fun NSObject.toList_(): List<*> =
     (

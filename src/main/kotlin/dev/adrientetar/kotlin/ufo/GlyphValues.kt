@@ -7,8 +7,9 @@ import nl.adaptivity.xmlutil.serialization.XmlSerialName
 
 // TODO: make internal and extract an interface for the public API
 class GlyphValues(internal val glif: Glif = Glif()) {
-    val anchors: List<Anchor>?
+    var anchors: List<Anchor>?
         get() = glif.anchors
+        set(value) { glif.anchors = value }
 
     var components: List<Component>?
         get() = glif.outline.components
@@ -26,9 +27,14 @@ class GlyphValues(internal val glif: Glif = Glif()) {
         get() = glif.name
         set(value) { glif.name = value }
 
-    val unicodes: List<Int>?
+    var unicodes: List<Int>?
         get() = glif.unicodes?.map {
             it.hex.toLong(16).toInt()
+        }
+        set(value) {
+            glif.unicodes = value?.map {
+                Unicode("%X".format(it))
+            }
         }
 
     var width: Float?

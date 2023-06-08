@@ -79,6 +79,7 @@ class GlyphTests {
         glyphs.add(
             GlyphValues().apply {
                 name = "space"
+                unicodes = listOf(0x0020)
             }
         )
     }
@@ -87,6 +88,7 @@ class GlyphTests {
         val it = glyphs.iterator()
         it.next().let { glyph ->
             assertThat(glyph.name).isEqualTo(".notdef")
+            assertThat(glyph.unicodes).isEqualTo(null)
             assertThat(glyph.anchors).isEqualTo(null)
             assertThat(glyph.components).isEqualTo(null)
             assertThat(glyph.contours).isEqualTo(
@@ -110,6 +112,7 @@ class GlyphTests {
         }
         it.next().let { glyph ->
             assertThat(glyph.name).isEqualTo("space")
+            assertThat(glyph.unicodes).isEqualTo(listOf(0x0020))
         }
     }
 }

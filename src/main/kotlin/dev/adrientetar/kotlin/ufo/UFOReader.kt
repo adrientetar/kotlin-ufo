@@ -2,7 +2,7 @@ package dev.adrientetar.kotlin.ufo
 
 import com.dd.plist.NSDictionary
 import com.dd.plist.NSObject
-import com.dd.plist.PropertyListParser
+import com.dd.plist.XMLPropertyListParser
 import kotlinx.serialization.decodeFromString
 import java.nio.file.NoSuchFileException
 import java.nio.file.Path
@@ -43,7 +43,6 @@ class UFOReader(
             .readPlist(NSObject::toMapOfStrings) ?: return sequenceOf()
         // TODO: reuse previous parse?
         val lib = readLib()
-        // TODO: should we use the order from contents.plist as well?
         val glyphNames = ufoGlyphOrder(
             contentsDict.keys,
             lib.glyphOrder
@@ -82,7 +81,7 @@ class UFOReader(
 
     private fun <T> Path.readPlist(transform: (NSObject) -> T, required: Boolean = true): T? =
         try {
-            transform(PropertyListParser.parse(this))
+            transform(XMLPropertyListParser.parse(this))
         } catch (ex: Exception) {
             if (strict && (required || ex !is NoSuchFileException)) {
                 throw UFOLibException("Failed to read $name", ex)
@@ -102,8 +101,8 @@ class UFOReader(
 }
 
 internal fun ufoGlyphOrder(allGlyphs: Collection<String>, glyphOrder: List<String>?): Collection<String> =
-    when (glyphOrder) {
-        null -> allGlyphs
+    when {
+        glyphOrder.isNullOrEmpty() -> allGlyphs
         else -> {
             val glyphOrderSet = glyphOrder.toSet()
             val allGlyphsSet = allGlyphs.toSet()
