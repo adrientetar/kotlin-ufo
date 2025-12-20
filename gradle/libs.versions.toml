@@ -1,0 +1,23 @@
+[versions]
+kotlin = "2.2.21"
+
+dd-plist = "1.27"
+xmlutil = "0.86.3"
+
+jimfs = "1.2"
+truth = "1.4.4"
+
+jacoco = "0.8.10"
+mavenPublish = "0.34.0"
+
+[libraries]
+dd-plist = { module = "com.googlecode.plist:dd-plist", version.ref = "dd-plist" }
+xmlutil = { module = "io.github.pdvrieze.xmlutil:serialization", version.ref = "xmlutil" }
+
+jimfs = { module = "com.google.jimfs:jimfs", version.ref = "jimfs" }
+truth = { module = "com.google.truth:truth", version.ref = "truth" }
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+maven-publish = { id = "com.vanniktech.maven.publish", version.ref = "mavenPublish" }

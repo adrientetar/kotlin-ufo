@@ -1,31 +1,28 @@
-import java.net.URI
-
-@Suppress("DSL_SCOPE_VIOLATION")
 plugins {
-    kotlin("jvm") version libs.versions.kotlin
-    kotlin("plugin.serialization") version libs.versions.kotlin
-    id("maven-publish")
+    alias(libs.plugins.kotlin.jvm)
+    id("java-library")
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.maven.publish)
     jacoco
 }
 
-group = "io.github.adrientetar"
-version = libs.versions.library.get()
+val GROUP: String by project
+val VERSION_NAME: String by project
+
+group = GROUP
+version = VERSION_NAME
 
 repositories {
     mavenCentral()
 }
 
-kotlin {
-    jvmToolchain(11)
-}
-
 dependencies {
-    implementation("com.googlecode.plist:dd-plist:" + libs.versions.plist.get())
-    implementation("io.github.pdvrieze.xmlutil:serialization:" + libs.versions.xmlutil.get())
+    implementation(libs.dd.plist)
+    implementation(libs.xmlutil)
 
     testImplementation(kotlin("test"))
-    testImplementation("com.google.truth:truth:" + libs.versions.truth.get())
-    testImplementation("com.google.jimfs:jimfs:" + libs.versions.jimfs.get())
+    testImplementation(libs.truth)
+    testImplementation(libs.jimfs)
 }
 
 tasks.test {
@@ -47,49 +44,10 @@ tasks.jacocoTestReport {
     dependsOn(tasks.test)
 }
 
-publishing {
-    publications {
-        create<MavenPublication>("maven") {
-            groupId = "io.github.adrientetar"
-            artifactId = "kotlin-ufo"
-            version = libs.versions.library.get()
-
-            from(components["java"])
-
-            pom {
-                description.set("A library to read/write UFO fonts")
-                name.set("Kotlin UFO")
-                url.set("https://github.com/adrientetar/kotlin-ufo")
-                pom.licenses {
-                    license {
-                        name.set("The Apache Software License, Version 2.0")
-                        url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
-                        distribution.set("repo")
-                    }
-                }
-                pom.scm {
-                    url.set("https://github.com/adrientetar/kotlin-ufo")
-                    connection.set("scm:git:git://github.com/adrientetar/kotlin-ufo.git")
-                    developerConnection.set("scm:git:ssh://git@github.com/adrientetar/kotlin-ufo.git")
-                }
-                pom.developers {
-                    developer {
-                        id.set("adrientetar")
-                        name.set("Adrien Tétar")
-                    }
-                }
-            }
-        }
-    }
-
-    repositories {
-        maven {
-            name = "OSSRH"
-            url = URI("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
-            credentials {
-                username = System.getenv("MAVEN_USERNAME")
-                password = System.getenv("MAVEN_PASSWORD")
-            }
-        }
+mavenPublishing {
+    publishToMavenCentral()
+    // Signing is required for Maven Central, but should not block local development.
+    if (providers.environmentVariable("CI").isPresent) {
+        signAllPublications()
     }
 }
