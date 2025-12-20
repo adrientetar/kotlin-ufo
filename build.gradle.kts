@@ -8,7 +8,7 @@ plugins {
     jacoco
 }
 
-group = "dev.adrientetar"
+group = "io.github.adrientetar"
 version = libs.versions.library.get()
 
 repositories {

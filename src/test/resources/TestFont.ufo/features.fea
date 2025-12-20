@@ -1,0 +1,16 @@
+# OpenType feature definitions for TestFont
+
+languagesystem DFLT dflt;
+languagesystem latn dflt;
+
+# Kerning feature
+feature kern {
+    pos a b -50;
+    pos b c -30;
+} kern;
+
+# Ligature feature
+feature liga {
+    sub f i by fi;
+    sub f l by fl;
+} liga;

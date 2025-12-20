@@ -11,15 +11,26 @@ kotlin-ufo
 
 </div>
 
-With this library, one can generate [UFO fonts], which in turn allows using the [fontmake] compiler.
+With this library, one can read and write [UFO fonts], which in turn allows using the [fontmake] compiler.
 
-This project is currently in very early stage and cannot be used to make fonts. Only UFO 3 is
-supported.
+Only UFO 3 is currently supported.
 
-- Font info ✅
-- Foreground layer glyphs ✅
-- Font lib ✅
-- Remaining: other layers, features, groups/kerning, other libs, data...
+### Supported features
+
+| Feature | Status |
+|---------|--------|
+| `metainfo.plist` | ✅ Read/Write |
+| `fontinfo.plist` | ✅ Read/Write (comprehensive) |
+| `groups.plist` | ✅ Read/Write (with kerning group helpers) |
+| `kerning.plist` | ✅ Read/Write |
+| `lib.plist` | ✅ Read/Write (with `public.glyphOrder`) |
+| `features.fea` | ✅ Read/Write |
+| `layercontents.plist` | ✅ Read/Write (multiple layers) |
+| `glyphs/` | ✅ Read/Write (all GLIF elements) |
+| `images/` directory | ✅ Read/Write (PNG images) |
+| `data/` directory | ✅ Read/Write (arbitrary data) |
+
+**GLIF support:** advance, unicode, anchor, outline (contour, component, point), lib, note, image, guideline, and identifier attributes.
 
 Usage
 -----
@@ -28,7 +39,7 @@ Usage
 
 ```kotlin
 import com.google.common.truth.Truth.assertThat
-import dev.adrientetar.kotlin.ufo.UFOReader
+import io.github.adrientetar.ufo.UFOReader
 import java.nio.file.Paths
 
 val path = Paths.get("/usr/share/MyFont-Regular.ufo")
@@ -43,8 +54,8 @@ assertThat(info.styleName).isEqualTo("Regular")
 ### Write
 
 ```kotlin
-import dev.adrientetar.kotlin.ufo.FontInfoValues
-import dev.adrientetar.kotlin.ufo.UFOWriter
+import io.github.adrientetar.ufo.FontInfoValues
+import io.github.adrientetar.ufo.UFOWriter
 import java.nio.file.Paths
 
 val path = Paths.get("/usr/share/MyFont-Regular.ufo")
@@ -58,16 +69,22 @@ val writer = UFOWriter(path)
 writer.writeFontInfo(info)
 ```
 
-See [the tests](/src/test/kotlin/dev/adrientetar/kotlin/ufo) for more sample code.
+See [the tests](/src/test/kotlin/io/github/adrientetar/ufo) for more sample code.
+
+Build
+-----
+
+You need JDK 11 or later installed.
+
+To build this library, run `./gradlew jar`.
 
 Contributions
 -------------
 
 I would like to have help with the following:
 
-- Adding support to read/write more things (with tests 😀)
-- Writing tests: we can port some tests from [fontTools.ufoLib], and write to a
-  [virtual filesystem][jimfs] to keep the tests fast to run.
+- Adding support for UFO ZIP (`.ufoz`) and UFO 2
+- Adding a validation API (groups validation, kerning validation)
 - Adding a pipeline to [validate exported API][binary-compatibility-validator], so that we don’t 
   export unintended symbols in the library and can monitor backwards incompatible changes.
 

@@ -2,6 +2,11 @@
 <glyph name="a" format="2">
   <advance height="750" width="388"/>
   <unicode hex="0061"/>
+  <note>This is a sample note for glyph 'a'.</note>
+  <image fileName="a_sketch.png" xOffset="10" yOffset="20" xScale="0.5" yScale="0.5" color="1,0,0,0.5"/>
+  <guideline x="194" name="center" color="0,0,1,1"/>
+  <guideline y="510" name="top"/>
+  <guideline x="100" y="200" angle="45" name="diagonal" identifier="guide1"/>
   <outline>
     <contour>
       <point x="66" y="0" type="line"/>
