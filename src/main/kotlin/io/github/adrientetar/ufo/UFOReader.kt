@@ -6,6 +6,7 @@ import com.dd.plist.XMLPropertyListParser
 import kotlinx.serialization.decodeFromString
 import java.nio.file.NoSuchFileException
 import java.nio.file.Path
+import kotlin.io.path.exists
 import kotlin.io.path.name
 import kotlin.io.path.readText
 
@@ -252,6 +253,10 @@ class UFOReader(
             transform(XMLPropertyListParser.parse(this))
         } catch (ex: Exception) {
             if (strict && (required || ex !is NoSuchFileException)) {
+                // Provide clearer error if the entire UFO folder doesn't exist
+                if (ex is NoSuchFileException && !ufo.exists()) {
+                    throw UFOLibException("File not found: ${ufo.name}", ex)
+                }
                 throw UFOLibException("Failed to read $name", ex)
             }
             null
@@ -263,6 +268,10 @@ class UFOReader(
             readText()
         } catch (ex: Exception) {
             if (strict && (required || ex !is NoSuchFileException)) {
+                // Provide clearer error if the entire UFO folder doesn't exist
+                if (ex is NoSuchFileException && !ufo.exists()) {
+                    throw UFOLibException("File not found: ${ufo.name}", ex)
+                }
                 throw UFOLibException("Failed to read $name", ex)
             }
             null

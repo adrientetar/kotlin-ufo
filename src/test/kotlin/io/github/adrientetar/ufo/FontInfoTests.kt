@@ -17,6 +17,21 @@ import kotlin.test.Test
  */
 class FontInfoTests {
     @Test
+    fun testUfoNotFound() {
+        val fs = Jimfs.newFileSystem(Configuration.unix())
+        // UFO path that doesn't exist at all
+        val memPath = fs.getPath("/path/to/NonExistent.ufo")
+        val reader = UFOReader(memPath)
+
+        // When the entire UFO folder doesn't exist, throw UFOLibException with clear message
+        val exception = assertThrows<UFOLibException> {
+            reader.readFontInfo()
+        }
+        assertThat(exception.message).contains("File not found")
+        assertThat(exception.message).contains("NonExistent.ufo")
+    }
+
+    @Test
     fun testInvalidRead() {
         val fs = Jimfs.newFileSystem(Configuration.unix())
         val memPath = fs.getPath("/path/to/TestFont.ufo")
