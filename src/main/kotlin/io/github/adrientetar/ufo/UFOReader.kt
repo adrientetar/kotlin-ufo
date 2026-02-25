@@ -3,7 +3,6 @@ package io.github.adrientetar.ufo
 import com.dd.plist.NSDictionary
 import com.dd.plist.NSObject
 import com.dd.plist.XMLPropertyListParser
-import kotlinx.serialization.decodeFromString
 import java.io.Closeable
 import java.net.URI
 import java.nio.file.FileSystem
@@ -77,6 +76,7 @@ class UFOReader(
     override fun close() {
         zipFileSystem?.close()
     }
+
     /**
      * The UFO format version (2 or 3), detected from metainfo.plist.
      *
@@ -95,6 +95,7 @@ class UFOReader(
         }
         version
     }
+
     fun readFontInfo(): FontInfoValues {
         val path = ufo.resolve("fontinfo.plist")
         val fontInfoDict = path.readPlist(NSObject::toDictionary)
@@ -108,19 +109,23 @@ class UFOReader(
      * For UFO 2, which has no layercontents.plist, returns a single default layer
      * pointing to the `glyphs` directory.
      *
+     * The result is cached after first read.
+     *
      * @return List of pairs where each pair is (layerName, directoryName)
      */
-    fun readLayerContents(): List<Pair<String, String>> {
+    fun readLayerContents(): List<Pair<String, String>> = cachedLayerContents
+
+    private val cachedLayerContents: List<Pair<String, String>> by lazy {
         if (formatVersion < 3) {
-            return listOf(Layer.DEFAULT_NAME to Layer.DEFAULT_DIRECTORY)
+            return@lazy listOf(Layer.DEFAULT_NAME to Layer.DEFAULT_DIRECTORY)
         }
 
         val layerContents = ufo.resolve("layercontents.plist")
-            .readPlist(NSObject::toListOfListOfStrings) ?: return listOf(
+            .readPlist(NSObject::toListOfListOfStrings) ?: return@lazy listOf(
                 Layer.DEFAULT_NAME to Layer.DEFAULT_DIRECTORY
             )
 
-        return layerContents.mapNotNull { entry ->
+        layerContents.mapNotNull { entry ->
             if (entry.size >= 2) {
                 entry[0] to entry[1]
             } else null
@@ -149,7 +154,6 @@ class UFOReader(
         // Read glyph names according to glyph order
         val contentsDict = ufo.resolve(foregroundDir + "contents.plist")
             .readPlist(NSObject::toMapOfStrings) ?: return sequenceOf()
-        // TODO: reuse previous parse?
         val lib = readLib()
         val glyphNames = ufoGlyphOrder(
             contentsDict.keys,
@@ -161,16 +165,16 @@ class UFOReader(
             for (glifFileName in glyphNames.mapNotNull { contentsDict[it] }) {
                 val glifPath = ufo.resolve(foregroundDir + glifFileName)
                 val glifXml = glifPath.readTextOrNull()
-                val glif = glifXml?.let { niceXML.decodeFromString<Glif>(it) }
+                val glif = glifXml?.let {
+                    try {
+                        GlifParser.parse(it)
+                    } catch (_: Exception) {
+                        if (strict) throw UFOLibException("Failed to parse $glifFileName")
+                        null
+                    }
+                }
 
                 if (glif != null) {
-                    // Parse the lib separately since xmlutil has trouble with nested plist
-                    if (glifXml.contains("<lib>")) {
-                        val libDict = extractLibFromGlifXml(glifXml)
-                        if (libDict.count() > 0) {
-                            glif.lib = GlifLib(libDict)
-                        }
-                    }
                     // Convert GLIF format 1 → 2 (UFO 2 anchor-as-contour → anchor elements)
                     UFO2Converter.convertGlif(glif)
                     yield(GlyphValues(glif))
@@ -306,7 +310,6 @@ class UFOReader(
     fun readLib(): LibValues {
         val path = ufo.resolve("lib.plist")
         val libDict = path.readPlist(NSObject::toDictionary, required = false)
-
         return LibValues(libDict ?: NSDictionary())
     }
 
@@ -376,17 +379,6 @@ class UFOReader(
                 if (ex is NoSuchFileException && !ufo.exists()) {
                     throw UFOLibException("File not found: ${ufo.name}", ex)
                 }
-                throw UFOLibException("Failed to read $name", ex)
-            }
-            null
-        }
-    }
-
-    private inline fun <reified T> Path.readXML(): T? {
-        return try {
-            niceXML.decodeFromString<T>(readText())
-        } catch (ex: Exception) {
-            if (strict) {
                 throw UFOLibException("Failed to read $name", ex)
             }
             null

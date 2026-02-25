@@ -1,7 +1,6 @@
 package io.github.adrientetar.ufo
 
 import com.dd.plist.NSDictionary
-import com.dd.plist.XMLPropertyListParser
 import com.dd.plist.XMLPropertyListWriter
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
@@ -10,8 +9,6 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import nl.adaptivity.xmlutil.serialization.XmlValue
-import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.util.regex.Pattern
 
@@ -117,7 +114,7 @@ object GlifLibSerializer : KSerializer<GlifLib> {
         val fullXml = baos.toString(Charsets.UTF_8)
 
         // Extract just the <dict>...</dict> part (skip XML declaration and plist wrapper)
-        val dictContent = extractDictElement(fullXml)
+        val dictContent = extractDictFromPlistXml(fullXml)
         encoder.encodeString(dictContent)
     }
 
@@ -127,30 +124,8 @@ object GlifLibSerializer : KSerializer<GlifLib> {
             return GlifLib()
         }
 
-        // Wrap the dict content in a plist envelope for parsing
-        val plistXml = """<?xml version="1.0" encoding="UTF-8"?>
-            |<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-            |<plist version="1.0">
-            |$content
-            |</plist>""".trimMargin()
-
-        return try {
-            val bais = ByteArrayInputStream(plistXml.toByteArray(Charsets.UTF_8))
-            GlifLib(XMLPropertyListParser.parse(bais) as NSDictionary)
-        } catch (e: Exception) {
-            GlifLib()
-        }
-    }
-
-    private fun extractDictElement(plistXml: String): String {
-        // Find the <dict> element and extract it with all its content
-        val dictStart = plistXml.indexOf("<dict")
-        val dictEnd = plistXml.lastIndexOf("</dict>")
-        return if (dictStart >= 0 && dictEnd >= 0) {
-            plistXml.substring(dictStart, dictEnd + "</dict>".length)
-        } else {
-            "<dict/>"
-        }
+        val dict = parseDictFromXml(content)
+        return if (dict != null) GlifLib(dict) else GlifLib()
     }
 }
 
@@ -164,29 +139,13 @@ private val LIB_PATTERN = Pattern.compile("<lib>\\s*(.*?)\\s*</lib>", Pattern.DO
 internal fun extractLibFromGlifXml(glifXml: String): NSDictionary {
     // Find <lib>...</lib> section
     val matcher = LIB_PATTERN.matcher(glifXml)
-    
+
     if (!matcher.find()) {
         return NSDictionary()
     }
-    
+
     val libContent = matcher.group(1).trim()
-    if (libContent.isEmpty()) {
-        return NSDictionary()
-    }
-    
-    // Wrap in plist envelope and parse
-    val plistXml = """<?xml version="1.0" encoding="UTF-8"?>
-        |<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-        |<plist version="1.0">
-        |$libContent
-        |</plist>""".trimMargin()
-    
-    return try {
-        val bais = ByteArrayInputStream(plistXml.toByteArray(Charsets.UTF_8))
-        XMLPropertyListParser.parse(bais) as NSDictionary
-    } catch (e: Exception) {
-        NSDictionary()
-    }
+    return parseDictFromXml(libContent) ?: NSDictionary()
 }
 
 /**
@@ -196,16 +155,9 @@ internal fun serializeLibToXml(dict: NSDictionary): String {
     val baos = ByteArrayOutputStream()
     XMLPropertyListWriter.write(dict, baos)
     val fullXml = baos.toString(Charsets.UTF_8)
-    
-    // Extract just the <dict>...</dict> part (skip XML declaration and plist wrapper)
-    val dictStart = fullXml.indexOf("<dict")
-    val dictEnd = fullXml.lastIndexOf("</dict>")
-    val dictContent = if (dictStart >= 0 && dictEnd >= 0) {
-        fullXml.substring(dictStart, dictEnd + "</dict>".length)
-    } else {
-        "<dict/>"
-    }
-    
+
+    val dictContent = extractDictFromPlistXml(fullXml)
+
     // Indent the content for nicer formatting
     val indentedDict = dictContent.lines().joinToString("\n") { "  $it" }
     return "<lib>\n$indentedDict\n</lib>"

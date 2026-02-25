@@ -1,8 +1,5 @@
 package io.github.adrientetar.ufo
 
-import com.dd.plist.NSDictionary
-import com.dd.plist.XMLPropertyListParser
-import java.io.ByteArrayInputStream
 import java.io.StringReader
 import javax.xml.stream.XMLInputFactory
 import javax.xml.stream.XMLStreamConstants
@@ -219,20 +216,8 @@ object GlifParser {
         }
 
         val dictContent = originalXml.substring(dictStart, dictEnd + "</dict>".length)
-
-        // Wrap in plist envelope and parse
-        val plistXml = """<?xml version="1.0" encoding="UTF-8"?>
-            |<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-            |<plist version="1.0">
-            |$dictContent
-            |</plist>""".trimMargin()
-
-        return try {
-            val bais = ByteArrayInputStream(plistXml.toByteArray(Charsets.UTF_8))
-            GlifLib(XMLPropertyListParser.parse(bais) as NSDictionary)
-        } catch (e: Exception) {
-            GlifLib()
-        }
+        val dict = parseDictFromXml(dictContent) ?: return GlifLib()
+        return GlifLib(dict)
     }
 }
 

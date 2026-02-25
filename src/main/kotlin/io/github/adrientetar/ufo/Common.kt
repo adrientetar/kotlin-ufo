@@ -5,6 +5,7 @@ import com.dd.plist.NSDictionary
 import com.dd.plist.NSNumber
 import com.dd.plist.NSObject
 import com.dd.plist.NSString
+import com.dd.plist.XMLPropertyListParser
 import nl.adaptivity.xmlutil.serialization.XML
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -82,6 +83,41 @@ internal fun NSObject.toMapOfStrings(): Map<String, String> {
         .mapValues {
             it.value.toJavaObject() as String
         }
+}
+
+/**
+ * Parses a plist `<dict>` XML fragment into an [NSDictionary].
+ *
+ * Wraps the fragment in a plist envelope before parsing.
+ */
+internal fun parseDictFromXml(dictXml: String): NSDictionary? {
+    if (dictXml.isBlank()) return null
+
+    val plistXml = """<?xml version="1.0" encoding="UTF-8"?>
+        |<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        |<plist version="1.0">
+        |$dictXml
+        |</plist>""".trimMargin()
+
+    return try {
+        val bais = java.io.ByteArrayInputStream(plistXml.toByteArray(Charsets.UTF_8))
+        XMLPropertyListParser.parse(bais) as NSDictionary
+    } catch (_: Exception) {
+        null
+    }
+}
+
+/**
+ * Extracts the `<dict>...</dict>` element from a full plist XML string.
+ */
+internal fun extractDictFromPlistXml(plistXml: String): String {
+    val dictStart = plistXml.indexOf("<dict")
+    val dictEnd = plistXml.lastIndexOf("</dict>")
+    return if (dictStart >= 0 && dictEnd >= 0) {
+        plistXml.substring(dictStart, dictEnd + "</dict>".length)
+    } else {
+        "<dict/>"
+    }
 }
 
 private fun NSObject.toList_(): List<*> {
