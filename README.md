@@ -13,7 +13,7 @@ kotlin-ufo
 
 With this library, one can read and write [UFO fonts], which in turn allows using the [fontmake] compiler.
 
-UFO 2 and UFO 3 are supported. UFO 2 fonts are converted to UFO 3 on import. UFOZ (ZIP-compressed UFO) is supported for reading via `UFOReader.open()`.
+UFO 2 and UFO 3 are supported. UFO 2 fonts are converted to UFO 3 on import. UFOZ (ZIP-compressed UFO) is also supported.
 
 ### Supported features
 
