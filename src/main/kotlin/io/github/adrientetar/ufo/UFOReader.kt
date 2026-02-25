@@ -4,9 +4,16 @@ import com.dd.plist.NSDictionary
 import com.dd.plist.NSObject
 import com.dd.plist.XMLPropertyListParser
 import kotlinx.serialization.decodeFromString
+import java.io.Closeable
+import java.net.URI
+import java.nio.file.FileSystem
+import java.nio.file.FileSystems
 import java.nio.file.NoSuchFileException
 import java.nio.file.Path
 import kotlin.io.path.exists
+import kotlin.io.path.extension
+import kotlin.io.path.isDirectory
+import kotlin.io.path.isRegularFile
 import kotlin.io.path.name
 import kotlin.io.path.readText
 
@@ -20,11 +27,56 @@ import kotlin.io.path.readText
  *
  * Supports UFO format versions 2 and 3. UFO 2 data is transparently converted to UFO 3
  * via [UFO2Converter].
+ *
+ * For UFOZ (ZIP-compressed UFO) files, use [UFOReader.open] which returns a reader that must
+ * be [closed][close] when done to release the ZIP filesystem.
  */
 class UFOReader(
     private val ufo: Path,
-    private val strict: Boolean = true
-) {
+    private val strict: Boolean = true,
+    private val zipFileSystem: FileSystem? = null
+) : Closeable {
+
+    companion object {
+        /**
+         * Opens a UFO or UFOZ file for reading.
+         *
+         * If [path] is a `.ufoz` file (or any ZIP file), it is opened as a ZIP filesystem
+         * and the `.ufo` directory inside is used. The returned reader must be [closed][close]
+         * when done to release the ZIP filesystem.
+         *
+         * If [path] is a directory, a regular [UFOReader] is returned (closing is a no-op).
+         */
+        fun open(path: Path, strict: Boolean = true): UFOReader {
+            if (path.isRegularFile()) {
+                val zipFs = FileSystems.newFileSystem(URI.create("jar:${path.toUri()}"), emptyMap<String, Any>())
+                try {
+                    val root = zipFs.rootDirectories.first()
+                    val ufoDir = findUfoDirectory(root)
+                        ?: throw UFOLibException("No .ufo directory found in $path")
+                    return UFOReader(ufoDir, strict, zipFileSystem = zipFs)
+                } catch (ex: Exception) {
+                    zipFs.close()
+                    throw ex
+                }
+            }
+            return UFOReader(path, strict)
+        }
+
+        private fun findUfoDirectory(root: Path): Path? {
+            val entries = java.nio.file.Files.list(root).use { it.toList() }
+            return entries.firstOrNull { it.isDirectory() && it.name.endsWith(".ufo") }
+                ?: entries.firstOrNull { it.isDirectory() }
+        }
+    }
+
+    /**
+     * Closes the underlying ZIP filesystem, if this reader was opened from a UFOZ file.
+     * For directory-based readers, this is a no-op.
+     */
+    override fun close() {
+        zipFileSystem?.close()
+    }
     /**
      * The UFO format version (2 or 3), detected from metainfo.plist.
      *
