@@ -10,7 +10,6 @@ import kotlin.io.path.exists
 import kotlin.io.path.name
 import kotlin.io.path.readText
 
-// TODO: check metainfo formatVersion?
 // TODO: add Log statements
 
 /**
@@ -18,11 +17,32 @@ import kotlin.io.path.readText
  *
  * If [strict] is true, the functions in this class may throw [UFOLibException] if the file doesn't
  * match the file format structure. Otherwise, errors will be silently skipped.
+ *
+ * Supports UFO format versions 2 and 3. UFO 2 data is transparently converted to UFO 3
+ * via [UFO2Converter].
  */
 class UFOReader(
     private val ufo: Path,
     private val strict: Boolean = true
 ) {
+    /**
+     * The UFO format version (2 or 3), detected from metainfo.plist.
+     *
+     * Defaults to 3 if metainfo.plist is missing or unreadable (e.g. partial UFO).
+     */
+    val formatVersion: Int by lazy {
+        val path = ufo.resolve("metainfo.plist")
+        val dict = try {
+            XMLPropertyListParser.parse(path).toDictionary()
+        } catch (_: Exception) {
+            null
+        }
+        val version = dict?.optInt("formatVersion") ?: 3
+        if (version !in 2..3) {
+            throw UFOLibException("Unsupported UFO format version: $version")
+        }
+        version
+    }
     fun readFontInfo(): FontInfoValues {
         val path = ufo.resolve("fontinfo.plist")
         val fontInfoDict = path.readPlist(NSObject::toDictionary)
@@ -33,9 +53,16 @@ class UFOReader(
     /**
      * Reads the layer contents mapping from layercontents.plist.
      *
+     * For UFO 2, which has no layercontents.plist, returns a single default layer
+     * pointing to the `glyphs` directory.
+     *
      * @return List of pairs where each pair is (layerName, directoryName)
      */
     fun readLayerContents(): List<Pair<String, String>> {
+        if (formatVersion < 3) {
+            return listOf(Layer.DEFAULT_NAME to Layer.DEFAULT_DIRECTORY)
+        }
+
         val layerContents = ufo.resolve("layercontents.plist")
             .readPlist(NSObject::toListOfListOfStrings) ?: return listOf(
                 Layer.DEFAULT_NAME to Layer.DEFAULT_DIRECTORY
@@ -63,13 +90,9 @@ class UFOReader(
     }
 
     fun readGlyphs(): Sequence<GlyphValues> {
-        // Read foreground layer name
-        val layerContents = ufo.resolve("layercontents.plist")
-            .readPlist(NSObject::toListOfListOfStrings) ?: return sequenceOf()
-        val foregroundDir = run {
-            val name = layerContents.firstOrNull()?.lastOrNull()
-            name?.plus("/") ?: "glyphs/"
-        }
+        // Read foreground layer directory from layer contents
+        val layerContents = readLayerContents()
+        val foregroundDir = (layerContents.firstOrNull()?.second ?: Layer.DEFAULT_DIRECTORY) + "/"
 
         // Read glyph names according to glyph order
         val contentsDict = ufo.resolve(foregroundDir + "contents.plist")
@@ -96,6 +119,8 @@ class UFOReader(
                             glif.lib = GlifLib(libDict)
                         }
                     }
+                    // Convert GLIF format 1 → 2 (UFO 2 anchor-as-contour → anchor elements)
+                    UFO2Converter.convertGlif(glif)
                     yield(GlyphValues(glif))
                 }
             }
@@ -188,15 +213,42 @@ class UFOReader(
     fun readGroups(): GroupsValues {
         val path = ufo.resolve("groups.plist")
         val groupsDict = path.readPlist(NSObject::toDictionary, required = false)
+        val groups = GroupsValues(groupsDict ?: NSDictionary())
 
-        return GroupsValues(groupsDict ?: NSDictionary())
+        // For UFO 2, kerning group conversion requires both groups and kerning together.
+        // Callers needing converted groups+kerning should use readConvertedGroupsAndKerning().
+        return groups
     }
 
     fun readKerning(): KerningValues {
         val path = ufo.resolve("kerning.plist")
         val kerningDict = path.readPlist(NSObject::toDictionary, required = false)
+        val kerning = KerningValues(kerningDict ?: NSDictionary())
 
-        return KerningValues(kerningDict ?: NSDictionary())
+        // For UFO 2, kerning group conversion requires both groups and kerning together.
+        // Callers needing converted groups+kerning should use readConvertedGroupsAndKerning().
+        return kerning
+    }
+
+    /**
+     * Reads groups and kerning, converting UFO 2 group names to UFO 3 conventions.
+     *
+     * For UFO 2, `@MMK_L_*` and `@MMK_R_*` group prefixes are renamed to `public.kern1.*`
+     * and `public.kern2.*`, and kerning references are updated accordingly.
+     *
+     * For UFO 3, the values are returned as-is.
+     *
+     * @return Pair of (groups, kerning) with UFO 3 kerning group conventions
+     */
+    fun readConvertedGroupsAndKerning(): Pair<GroupsValues, KerningValues> {
+        val groups = readGroups()
+        val kerning = readKerning()
+
+        if (formatVersion < 3) {
+            UFO2Converter.convertKerningAndGroups(kerning, groups)
+        }
+
+        return groups to kerning
     }
 
     fun readLib(): LibValues {

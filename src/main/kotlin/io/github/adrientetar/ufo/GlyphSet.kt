@@ -245,6 +245,9 @@ class GlyphSet internal constructor(
             return null
         }
 
+        // Convert GLIF format 1 → 2 (UFO 2 anchor-as-contour → anchor elements)
+        UFO2Converter.convertGlif(glif)
+
         return GlyphValues(glif)
     }
 

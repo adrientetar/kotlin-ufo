@@ -13,7 +13,7 @@ kotlin-ufo
 
 With this library, one can read and write [UFO fonts], which in turn allows using the [fontmake] compiler.
 
-Only UFO 3 is currently supported.
+UFO 2 and UFO 3 are supported. UFO 2 fonts are converted to UFO 3 on import.
 
 ### Supported features
 
@@ -83,7 +83,7 @@ Contributions
 
 I would like to have help with the following:
 
-- Adding support for UFO ZIP (`.ufoz`) and UFO 2
+- Adding support for UFO ZIP (`.ufoz`)
 - Adding a validation API (groups validation, kerning validation)
 - Adding a pipeline to [validate exported API][binary-compatibility-validator], so that we don’t 
   export unintended symbols in the library and can monitor backwards incompatible changes.
