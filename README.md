@@ -7,6 +7,7 @@ kotlin-ufo
 
 [![Kotlin](https://img.shields.io/badge/Language-Kotlin-7f52ff.svg)](https://kotlinlang.org/)
 [![Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE.txt)
+[![Maven central](https://img.shields.io/maven-central/v/io.github.adrientetar/kotlin-ufo?color=brightgreen)](https://central.sonatype.com/artifact/io.github.adrientetar/kotlin-ufo)
 [![Code coverage](https://codecov.io/gh/adrientetar/kotlin-ufo/branch/main/graph/badge.svg?token=6VLVM9MTQM)](https://codecov.io/gh/adrientetar/kotlin-ufo)
 
 </div>
@@ -14,6 +15,19 @@ kotlin-ufo
 With this library, one can read and write [UFO fonts], which in turn allows using the [fontmake] compiler.
 
 UFO 2 and UFO 3 are supported. UFO 2 fonts are converted to UFO 3 on import. UFOZ (ZIP-compressed UFO) is also supported.
+
+Maven library
+-------------
+
+```kotlin
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation("io.github.adrientetar:kotlin-ufo:1.1.0")
+}
+```
 
 ### Supported features
 
