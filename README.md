@@ -14,7 +14,7 @@ kotlin-ufo
 
 With this library, one can read and write [UFO fonts], which in turn allows using the [fontmake] compiler.
 
-UFO 2 and UFO 3 are supported. UFO 2 fonts are converted to UFO 3 on import. UFOZ (ZIP-compressed UFO) is also supported.
+UFO 3 is supported, as well as UFOZ (ZIP-compressed UFO). UFO 2 import is supported.
 
 Maven library
 -------------
@@ -28,23 +28,6 @@ dependencies {
     implementation("io.github.adrientetar:kotlin-ufo:1.1.0")
 }
 ```
-
-### Supported features
-
-| Feature | Status |
-|---------|--------|
-| `metainfo.plist` | ✅ Read/Write |
-| `fontinfo.plist` | ✅ Read/Write (comprehensive) |
-| `groups.plist` | ✅ Read/Write (with kerning group helpers) |
-| `kerning.plist` | ✅ Read/Write |
-| `lib.plist` | ✅ Read/Write (with `public.glyphOrder`) |
-| `features.fea` | ✅ Read/Write |
-| `layercontents.plist` | ✅ Read/Write (multiple layers) |
-| `glyphs/` | ✅ Read/Write (all GLIF elements) |
-| `images/` directory | ✅ Read/Write (PNG images) |
-| `data/` directory | ✅ Read/Write (arbitrary data) |
-
-**GLIF support:** advance, unicode, anchor, outline (contour, component, point), lib, note, image, guideline, and identifier attributes.
 
 Usage
 -----
@@ -85,6 +68,24 @@ writer.writeFontInfo(info)
 
 See [the tests](/src/test/kotlin/io/github/adrientetar/ufo) for more sample code.
 
+Supported features
+------------------
+
+| Feature | Status |
+|---------|--------|
+| `metainfo.plist` | ✅ Read/Write |
+| `fontinfo.plist` | ✅ Read/Write (comprehensive) |
+| `groups.plist` | ✅ Read/Write (with kerning group helpers) |
+| `kerning.plist` | ✅ Read/Write |
+| `lib.plist` | ✅ Read/Write (with `public.glyphOrder`) |
+| `features.fea` | ✅ Read/Write |
+| `layercontents.plist` | ✅ Read/Write (multiple layers) |
+| `glyphs/` | ✅ Read/Write (all GLIF elements) |
+| `images/` directory | ✅ Read/Write (PNG images) |
+| `data/` directory | ✅ Read/Write (arbitrary data) |
+
+**GLIF support:** advance, unicode, anchor, outline (contour, component, point), lib, note, image, guideline, and identifier attributes.
+
 Build
 -----
 
@@ -92,20 +93,6 @@ You need JDK 11 or later installed.
 
 To build this library, run `./gradlew jar`.
 
-Contributions
--------------
-
-I would like to have help with the following:
-
-- Adding a validation API (groups validation, kerning validation)
-- Adding a pipeline to [validate exported API][binary-compatibility-validator], so that we don’t 
-  export unintended symbols in the library and can monitor backwards incompatible changes.
-
-If you want to make a non-trivial contribution, consider coordinating with me and sharing design
-details beforehand if applicable. Thanks!
-
 [UFO fonts]: https://unifiedfontobject.org/
-[binary-compatibility-validator]: https://github.com/Kotlin/binary-compatibility-validator
-[fontTools.ufoLib]: https://github.com/fonttools/fonttools/blob/main/Tests/ufoLib/UFO3_test.py
 [fontmake]: https://github.com/googlefonts/fontmake
 [jimfs]: https://github.com/google/jimfs
