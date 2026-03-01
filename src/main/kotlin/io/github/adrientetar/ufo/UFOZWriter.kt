@@ -1,6 +1,5 @@
 package io.github.adrientetar.ufo
 
-import java.io.Closeable
 import java.io.IOException
 import java.net.URI
 import java.nio.file.FileSystem
@@ -32,7 +31,7 @@ class UFOZWriter private constructor(
     private val outputPath: Path,
     private val tempDir: Path,
     private val innerWriter: UFOWriter
-) : Closeable {
+) : UFOFormatWriter {
 
     companion object {
         /**
@@ -54,17 +53,17 @@ class UFOZWriter private constructor(
     }
 
     /** Delegates to the inner [UFOWriter]. */
-    fun writeMetaInfo() = innerWriter.writeMetaInfo()
-    fun writeFontInfo(values: FontInfoValues) = innerWriter.writeFontInfo(values)
-    fun writeLayers(layers: List<Layer>) = innerWriter.writeLayers(layers)
-    fun writeLayerGlyphs(layer: Layer) = innerWriter.writeLayerGlyphs(layer)
-    fun writeGlyphs(glyphs: List<GlyphValues>) = innerWriter.writeGlyphs(glyphs)
-    fun writeGroups(values: GroupsValues) = innerWriter.writeGroups(values)
-    fun writeKerning(values: KerningValues) = innerWriter.writeKerning(values)
-    fun writeLib(values: LibValues) = innerWriter.writeLib(values)
-    fun writeFeatures(values: FeaturesValues) = innerWriter.writeFeatures(values)
-    fun images(): ImagesDirectory = innerWriter.images()
-    fun data(): DataDirectory = innerWriter.data()
+    override fun writeMetaInfo() = innerWriter.writeMetaInfo()
+    override fun writeFontInfo(values: FontInfoValues) = innerWriter.writeFontInfo(values)
+    override fun writeLayers(layers: List<Layer>) = innerWriter.writeLayers(layers)
+    override fun writeLayerGlyphs(layer: Layer) = innerWriter.writeLayerGlyphs(layer)
+    override fun writeGlyphs(glyphs: List<GlyphValues>) = innerWriter.writeGlyphs(glyphs)
+    override fun writeGroups(values: GroupsValues) = innerWriter.writeGroups(values)
+    override fun writeKerning(values: KerningValues) = innerWriter.writeKerning(values)
+    override fun writeLib(values: LibValues) = innerWriter.writeLib(values)
+    override fun writeFeatures(values: FeaturesValues) = innerWriter.writeFeatures(values)
+    override fun images(): ImagesDirectory = innerWriter.images()
+    override fun data(): DataDirectory = innerWriter.data()
 
     /**
      * Packages the temporary UFO directory into a ZIP file at the output path, then

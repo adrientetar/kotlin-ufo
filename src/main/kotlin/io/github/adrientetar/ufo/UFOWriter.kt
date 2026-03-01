@@ -6,6 +6,7 @@ import com.dd.plist.NSObject
 import com.dd.plist.NSString
 import com.dd.plist.XMLPropertyListWriter
 import kotlinx.serialization.encodeToString
+import java.io.Closeable
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
@@ -26,7 +27,7 @@ import kotlin.io.path.writeText
 class UFOWriter(
     private val ufo: Path,
     clearDirectory: Boolean = true
-) {
+) : UFOFormatWriter {
     init {
         if (clearDirectory) {
             clearDirectory()
@@ -50,7 +51,11 @@ class UFOWriter(
         }
     }
 
-    fun writeFontInfo(values: FontInfoValues) {
+    override fun close() {
+        // No-op for directory-based UFO
+    }
+
+    override fun writeFontInfo(values: FontInfoValues) {
         val path = ufo.resolve("fontinfo.plist")
         path.writePlist(values.dict)
     }
@@ -63,7 +68,7 @@ class UFOWriter(
      *
      * @param layers The layers to write, in order from top to bottom
      */
-    fun writeLayers(layers: List<Layer>) {
+    override fun writeLayers(layers: List<Layer>) {
         if (layers.isEmpty()) return
 
         // Write layercontents.plist
@@ -83,7 +88,7 @@ class UFOWriter(
      *
      * @param layer The layer to write
      */
-    fun writeLayerGlyphs(layer: Layer) {
+    override fun writeLayerGlyphs(layer: Layer) {
         val glyphsDir = ufo.resolve(layer.directoryName)
 
         // Gather name to filename mapping (with .glif extension)
@@ -128,11 +133,11 @@ class UFOWriter(
      * This is a convenience method that creates a default layer and writes it.
      * For multi-layer support, use [writeLayers] instead.
      */
-    fun writeGlyphs(glyphs: List<GlyphValues>) {
+    override fun writeGlyphs(glyphs: List<GlyphValues>) {
         writeLayers(listOf(Layer.createDefault(glyphs)))
     }
 
-    fun writeGroups(values: GroupsValues) {
+    override fun writeGroups(values: GroupsValues) {
         val path = ufo.resolve("groups.plist")
         if (values.dict.count() == 0) {
             path.deleteIfExists()
@@ -141,7 +146,7 @@ class UFOWriter(
         path.writePlist(values.dict)
     }
 
-    fun writeKerning(values: KerningValues) {
+    override fun writeKerning(values: KerningValues) {
         val path = ufo.resolve("kerning.plist")
         if (values.dict.count() == 0) {
             path.deleteIfExists()
@@ -150,12 +155,12 @@ class UFOWriter(
         path.writePlist(values.dict)
     }
 
-    fun writeLib(values: LibValues) {
+    override fun writeLib(values: LibValues) {
         val path = ufo.resolve("lib.plist")
         path.writePlist(values.dict)
     }
 
-    fun writeMetaInfo() {
+    override fun writeMetaInfo() {
         val values = MetaInfoValues().apply {
             creator = "dev.adrientetar.kotlin.ufo"
             formatVersion = 3
@@ -172,7 +177,7 @@ class UFOWriter(
      *
      * @param values The FeaturesValues containing the feature text to write
      */
-    fun writeFeatures(values: FeaturesValues) {
+    override fun writeFeatures(values: FeaturesValues) {
         val path = ufo.resolve("features.fea")
         if (values.isEmpty) {
             path.deleteIfExists()
@@ -189,7 +194,7 @@ class UFOWriter(
      *
      * @return ImagesDirectory instance for writing/managing images
      */
-    fun images(): ImagesDirectory {
+    override fun images(): ImagesDirectory {
         return ImagesDirectory(ufo.resolve(ImagesDirectory.DIRECTORY_NAME))
     }
 
@@ -201,7 +206,7 @@ class UFOWriter(
      *
      * @return DataDirectory instance for writing/managing data files
      */
-    fun data(): DataDirectory {
+    override fun data(): DataDirectory {
         return DataDirectory(ufo.resolve(DataDirectory.DIRECTORY_NAME))
     }
 
