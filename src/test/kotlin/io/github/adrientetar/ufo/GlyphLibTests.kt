@@ -135,4 +135,106 @@ class GlyphLibTests {
         val glifContent = Files.readString(memPath.resolve("glyphs/nolib.glif"))
         assertThat(glifContent).doesNotContain("<lib>")
     }
+
+    @Test
+    fun testExtractLibFromGlifXmlNoLib() {
+        val xml = """<?xml version="1.0" encoding="UTF-8"?>
+            <glyph name="test" format="2">
+              <advance width="500"/>
+              <outline/>
+            </glyph>"""
+        val dict = extractLibFromGlifXml(xml)
+        assertThat(dict.count()).isEqualTo(0)
+    }
+
+    @Test
+    fun testExtractLibFromGlifXmlWithLib() {
+        val xml = """<?xml version="1.0" encoding="UTF-8"?>
+            <glyph name="test" format="2">
+              <advance width="500"/>
+              <outline/>
+              <lib>
+                <dict>
+                  <key>public.markColor</key>
+                  <string>1,0,0,1</string>
+                </dict>
+              </lib>
+            </glyph>"""
+        val dict = extractLibFromGlifXml(xml)
+        assertThat(dict.count()).isEqualTo(1)
+        assertThat(dict.getString("public.markColor")).isEqualTo("1,0,0,1")
+    }
+
+    @Test
+    fun testSerializeLibToXml() {
+        val dict = com.dd.plist.NSDictionary()
+        dict.put("public.markColor", "0,1,0,1")
+        val xml = serializeLibToXml(dict)
+        assertThat(xml).contains("<lib>")
+        assertThat(xml).contains("</lib>")
+        assertThat(xml).contains("public.markColor")
+        assertThat(xml).contains("0,1,0,1")
+    }
+
+    @Test
+    fun testGlyphLibSetNull() {
+        val glyph = GlyphValues()
+        glyph.lib["key1"] = "value1"
+        glyph.lib["key2"] = "value2"
+        assertThat(glyph.lib.keys).hasSize(2)
+
+        glyph.lib["key1"] = null
+        assertThat(glyph.lib.containsKey("key1")).isFalse()
+        assertThat(glyph.lib.keys).hasSize(1)
+    }
+
+    @Test
+    fun testGlifLibSerializerRoundTrip() {
+        // Test the serializer indirectly through write/read with multiple lib entries
+        val fs = Jimfs.newFileSystem(Configuration.unix())
+        val memPath = fs.getPath("/TestFont.ufo")
+
+        val glyph = GlyphValues().apply {
+            name = "sertest"
+            width = 500f
+        }
+        glyph.lib.markColor = "1,0,0,1"
+        glyph.lib.verticalOrigin = 800f
+        glyph.lib["com.example.int"] = 42
+        glyph.lib["com.example.bool"] = true
+
+        val writer = UFOWriter(memPath)
+        writer.writeMetaInfo()
+        writer.writeGlyphs(listOf(glyph))
+
+        val reader = UFOReader(memPath)
+        val readGlyph = reader.readGlyphs().first()
+
+        assertThat(readGlyph.lib.markColor).isEqualTo("1,0,0,1")
+        assertThat(readGlyph.lib.verticalOrigin).isEqualTo(800f)
+        assertThat(readGlyph.lib["com.example.int"]).isEqualTo(42L)
+        assertThat(readGlyph.lib["com.example.bool"]).isEqualTo(true)
+    }
+
+    @Test
+    fun testGlifLibSerializerEmpty() {
+        // Verify an empty GlifLib produces no lib element
+        val glifLib = GlifLib()
+        assertThat(glifLib.content.count()).isEqualTo(0)
+    }
+
+    @Test
+    fun testFeaturesValuesToString() {
+        val short = FeaturesValues("short text")
+        assertThat(short.toString()).contains("short text")
+
+        val long = FeaturesValues("a".repeat(100))
+        assertThat(long.toString()).contains("...")
+    }
+
+    @Test
+    fun testFeaturesValuesBlankIsEmpty() {
+        val blank = FeaturesValues("   ")
+        assertThat(blank.isEmpty).isTrue()
+    }
 }

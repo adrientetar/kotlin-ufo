@@ -170,6 +170,64 @@ class KerningTests {
         assertThat(kerning.pairCount).isEqualTo(3)
     }
 
+    @Test
+    fun testSetFirstToNullRemovesAll() {
+        val kerning = KerningValues()
+        kerning.set("A", "V", -50f)
+        kerning.set("A", "W", -40f)
+
+        kerning["A"] = null
+        assertThat(kerning.containsFirst("A")).isFalse()
+        assertThat(kerning["A"]).isNull()
+        assertThat(kerning.pairCount).isEqualTo(0)
+    }
+
+    @Test
+    fun testSetFirstToEmptyRemovesAll() {
+        val kerning = KerningValues()
+        kerning.set("A", "V", -50f)
+
+        kerning["A"] = emptyMap()
+        assertThat(kerning.containsFirst("A")).isFalse()
+        assertThat(kerning.pairCount).isEqualTo(0)
+    }
+
+    @Test
+    fun testRemoveLastPairRemovesFirst() {
+        val kerning = KerningValues()
+        kerning.set("A", "V", -50f)
+
+        kerning.set("A", "V", null)
+        assertThat(kerning.containsFirst("A")).isFalse()
+        assertThat(kerning.pairCount).isEqualTo(0)
+    }
+
+    @Test
+    fun testRemoveNonexistentPair() {
+        val kerning = KerningValues()
+        // Should not throw
+        kerning.set("A", "V", null)
+        assertThat(kerning.pairCount).isEqualTo(0)
+    }
+
+    @Test
+    fun testGetNonexistentFirst() {
+        val kerning = KerningValues()
+        assertThat(kerning["nonexistent"]).isNull()
+        assertThat(kerning.get("nonexistent", "V")).isNull()
+    }
+
+    @Test
+    fun testForEachEmpty() {
+        val kerning = KerningValues()
+        var count = 0
+        kerning.forEach { _, _, _ -> count++ }
+        assertThat(count).isEqualTo(0)
+
+        kerning.forEachFirst { _, _ -> count++ }
+        assertThat(count).isEqualTo(0)
+    }
+
     private fun populateKerning(kerning: KerningValues) {
         kerning["a"] = mapOf("a" to 5f, "b" to -10f, "space" to 1f)
         kerning["b"] = mapOf("a" to -7f)

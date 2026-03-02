@@ -76,6 +76,37 @@ class LibTests {
         verifyLib(lib)
     }
 
+    @Test
+    fun testLibContainsKey() {
+        val lib = LibValues()
+        lib.put("myKey", "myValue")
+        assertThat(lib.containsKey("myKey")).isTrue()
+        assertThat(lib.containsKey("missing")).isFalse()
+    }
+
+    @Test
+    fun testLibPutAndGet() {
+        val lib = LibValues()
+        lib.put("stringKey", "hello")
+        lib.put("intKey", 42)
+        lib.put("boolKey", true)
+
+        assertThat(lib["stringKey"]).isEqualTo("hello")
+        assertThat(lib["intKey"]).isEqualTo(42L)
+        assertThat(lib["boolKey"]).isEqualTo(true)
+        assertThat(lib["missing"]).isNull()
+    }
+
+    @Test
+    fun testLibGlyphOrderSetter() {
+        val lib = LibValues()
+        assertThat(lib.glyphOrder).isNull()
+
+        lib.glyphOrder = listOf("a", "b", "c")
+        assertThat(lib.glyphOrder).containsExactly("a", "b", "c").inOrder()
+        assertThat(lib.containsKey(LibValues.PUBLIC_GLYPH_ORDER)).isTrue()
+    }
+
     private fun populateLib(lib: LibValues) {
         lib.glyphOrder = listOf(
             ".notdef", "glyph1", "glyph2", "space",

@@ -172,6 +172,83 @@ class DataDirectoryTests {
     }
 
     @Test
+    fun testReadFileAsStringOrNull() {
+        val ufo = Paths.get(getResourceURI("/TestFont.ufo"))
+        val reader = UFOReader(ufo)
+        val data = reader.data()
+
+        assertThat(data.readFileAsStringOrNull("com.github.fonttools.ttx/CUST.ttx")).isNotNull()
+        assertThat(data.readFileAsStringOrNull("nonexistent/file.txt")).isNull()
+    }
+
+    @Test
+    fun testIsFileAndDirectoryEdgeCases() {
+        val ufo = Paths.get(getResourceURI("/TestFont.ufo"))
+        val reader = UFOReader(ufo)
+        val data = reader.data()
+
+        assertThat(data.isFile("com.github.fonttools.ttx/CUST.ttx")).isTrue()
+        assertThat(data.isFile("com.github.fonttools.ttx")).isFalse()
+        assertThat(data.isDirectory("nonexistent")).isFalse()
+        assertThat(data.isFile("nonexistent")).isFalse()
+    }
+
+    @Test
+    fun testDeleteSingleFile() {
+        val fs = Jimfs.newFileSystem(Configuration.unix())
+        val memPath = fs.getPath("/TestFont.ufo")
+        Files.createDirectories(memPath)
+
+        val writer = UFOWriter(memPath, clearDirectory = false)
+        val data = writer.data()
+
+        data.writeFileAsString("com.example.simple.txt", "content")
+        assertThat(data.isFile("com.example.simple.txt")).isTrue()
+
+        val deleted = data.delete("com.example.simple.txt")
+        assertThat(deleted).isTrue()
+        assertThat(data.hasEntry("com.example.simple.txt")).isFalse()
+    }
+
+    @Test
+    fun testListFilesInNonexistentDirectory() {
+        val fs = Jimfs.newFileSystem(Configuration.unix())
+        val memPath = fs.getPath("/TestFont.ufo")
+        Files.createDirectories(memPath)
+
+        val reader = UFOReader(memPath)
+        val data = reader.data()
+        assertThat(data.listFilesInDirectory("nonexistent")).isEmpty()
+    }
+
+    @Test
+    fun testCopyEntryFromNonexistent() {
+        val fs = Jimfs.newFileSystem(Configuration.unix())
+        val memPath = fs.getPath("/TestFont.ufo")
+
+        val writer = UFOWriter(memPath)
+        val targetData = writer.data()
+
+        val sourceData = DataDirectory(fs.getPath("/nonexistent/data"))
+        // Should be a no-op, not throw
+        targetData.copyEntryFrom(sourceData, "nonexistent")
+        assertThat(targetData.exists).isFalse()
+    }
+
+    @Test
+    fun testCopyFromEmptySource() {
+        val fs = Jimfs.newFileSystem(Configuration.unix())
+        val memPath = fs.getPath("/TestFont.ufo")
+
+        val writer = UFOWriter(memPath)
+        val targetData = writer.data()
+
+        val sourceData = DataDirectory(fs.getPath("/nonexistent/data"))
+        targetData.copyFrom(sourceData)
+        assertThat(targetData.exists).isFalse()
+    }
+
+    @Test
     fun testEmptyDataDirectory() {
         val fs = Jimfs.newFileSystem(Configuration.unix())
         val memPath = fs.getPath("/TestFont.ufo")

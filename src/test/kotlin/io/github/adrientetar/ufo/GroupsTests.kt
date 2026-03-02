@@ -119,6 +119,87 @@ class GroupsTests {
         assertThat(Files.exists(memPath.resolve("groups.plist"))).isFalse()
     }
 
+    @Test
+    fun testForEach() {
+        val groups = GroupsValues()
+        groups["public.kern1.A"] = listOf("A", "Agrave")
+        groups["stems"] = listOf("b", "d")
+
+        val collected = mutableMapOf<String, List<String>>()
+        groups.forEach { name, glyphs ->
+            collected[name] = glyphs
+        }
+        assertThat(collected).hasSize(2)
+        assertThat(collected["public.kern1.A"]).containsExactly("A", "Agrave")
+        assertThat(collected["stems"]).containsExactly("b", "d")
+    }
+
+    @Test
+    fun testIterator() {
+        val groups = GroupsValues()
+        groups["groupA"] = listOf("a", "b")
+        groups["groupB"] = listOf("c")
+
+        val entries = mutableMapOf<String, List<String>>()
+        for (entry in groups) {
+            entries[entry.key] = entry.value
+        }
+        assertThat(entries).hasSize(2)
+        assertThat(entries["groupA"]).containsExactly("a", "b")
+        assertThat(entries["groupB"]).containsExactly("c")
+    }
+
+    @Test
+    fun testRemoveGroup() {
+        val groups = GroupsValues()
+        groups["toRemove"] = listOf("a", "b")
+        groups["toKeep"] = listOf("c")
+
+        assertThat(groups.containsGroup("toRemove")).isTrue()
+        groups.remove("toRemove")
+        assertThat(groups.containsGroup("toRemove")).isFalse()
+        assertThat(groups["toRemove"]).isNull()
+        assertThat(groups.containsGroup("toKeep")).isTrue()
+    }
+
+    @Test
+    fun testSetGroupToNull() {
+        val groups = GroupsValues()
+        groups["myGroup"] = listOf("a", "b")
+        assertThat(groups.containsGroup("myGroup")).isTrue()
+
+        groups["myGroup"] = null
+        assertThat(groups.containsGroup("myGroup")).isFalse()
+        assertThat(groups["myGroup"]).isNull()
+    }
+
+    @Test
+    fun testGetNonexistentGroup() {
+        val groups = GroupsValues()
+        assertThat(groups["nonexistent"]).isNull()
+        assertThat(groups.containsGroup("nonexistent")).isFalse()
+    }
+
+    @Test
+    fun testEmptyGroupNames() {
+        val groups = GroupsValues()
+        assertThat(groups.groupNames).isEmpty()
+    }
+
+    @Test
+    fun testKerningGroupFiltersEmpty() {
+        val groups = GroupsValues()
+        groups["customGroup"] = listOf("a")
+
+        val firstGroups = mutableListOf<String>()
+        groups.forEachFirstKerningGroup { name, _ -> firstGroups.add(name) }
+        assertThat(firstGroups).isEmpty()
+
+        val secondGroups = mutableListOf<String>()
+        groups.forEachSecondKerningGroup { name, _ -> secondGroups.add(name) }
+        assertThat(secondGroups).isEmpty()
+    }
+
     private fun populateGroups(groups: GroupsValues) {
         groups["public.kern1.A"] = listOf("A", "Agrave", "Aacute")
         groups["public.kern2.V"] = listOf("V", "W")

@@ -3,7 +3,9 @@ package io.github.adrientetar.ufo
 import com.google.common.jimfs.Configuration
 import com.google.common.jimfs.Jimfs
 import com.google.common.truth.Truth.assertThat
+import java.nio.file.Files
 import java.nio.file.Paths
+import kotlin.io.path.writeText
 import kotlin.test.Test
 
 class GlyphTests {
@@ -52,6 +54,68 @@ class GlyphTests {
         val reader = UFOReader(memPath)
         val glyphs = reader.readGlyphs()
         verifyGlyphs(glyphs.toList())
+    }
+
+    @Test
+    fun testReadNonStrictMode() {
+        val fs = Jimfs.newFileSystem(Configuration.unix())
+        val memPath = fs.getPath("/TestFont.ufo")
+        Files.createDirectories(memPath)
+
+        // In non-strict mode, missing/invalid plists should not throw
+        val reader = UFOReader(memPath, strict = false)
+
+        val fontInfo = reader.readFontInfo()
+        assertThat(fontInfo.familyName).isNull()
+
+        val lib = reader.readLib()
+        assertThat(lib.glyphOrder).isNull()
+
+        val groups = reader.readGroups()
+        assertThat(groups.groupNames).isEmpty()
+
+        val kerning = reader.readKerning()
+        assertThat(kerning.firstGlyphs).isEmpty()
+
+        val features = reader.readFeatures()
+        assertThat(features.isEmpty).isTrue()
+    }
+
+    @Test
+    fun testReadGlyphsNonStrictWithCorruptGlif() {
+        val fs = Jimfs.newFileSystem(Configuration.unix())
+        val memPath = fs.getPath("/TestFont.ufo")
+        Files.createDirectories(memPath)
+
+        // Write a valid metainfo, layercontents, and contents.plist but a corrupt GLIF
+        val glyphsDir = memPath.resolve("glyphs")
+        Files.createDirectories(glyphsDir)
+
+        // Write layercontents.plist
+        val layerContents = """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<array>
+  <array><string>public.default</string><string>glyphs</string></array>
+</array>
+</plist>"""
+        memPath.resolve("layercontents.plist").writeText(layerContents)
+
+        val contentsPlist = """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>a</key>
+  <string>a.glif</string>
+</dict>
+</plist>"""
+        glyphsDir.resolve("contents.plist").writeText(contentsPlist)
+        glyphsDir.resolve("a.glif").writeText("<invalid xml")
+
+        // In non-strict mode, corrupt glyphs should be silently skipped
+        val reader = UFOReader(memPath, strict = false)
+        val glyphs = reader.readGlyphs().toList()
+        assertThat(glyphs).isEmpty()
     }
 
     private fun populateGlyphs(glyphs: MutableList<GlyphValues>) {

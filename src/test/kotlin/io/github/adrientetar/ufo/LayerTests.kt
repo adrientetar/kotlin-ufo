@@ -255,6 +255,12 @@ class LayerTests {
 
         val infoWithLib = LayerInfo(lib = NSDictionary().apply { put("key", "value") })
         assertThat(infoWithLib.isEmpty).isFalse()
+
+        val infoWithEmptyLib = LayerInfo(lib = NSDictionary())
+        assertThat(infoWithEmptyLib.isEmpty).isTrue()
+
+        val infoWithNullLib = LayerInfo(color = null, lib = null)
+        assertThat(infoWithNullLib.isEmpty).isTrue()
     }
 
     @Test

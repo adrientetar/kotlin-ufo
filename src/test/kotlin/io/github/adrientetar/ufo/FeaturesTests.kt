@@ -118,10 +118,43 @@ class FeaturesTests {
         val features1 = FeaturesValues(SAMPLE_FEATURES)
         val features2 = FeaturesValues(SAMPLE_FEATURES)
         val features3 = FeaturesValues("different content")
+        val features4 = FeaturesValues(null)
+        val features5 = FeaturesValues(null)
 
         assertThat(features1).isEqualTo(features2)
         assertThat(features1.hashCode()).isEqualTo(features2.hashCode())
         assertThat(features1).isNotEqualTo(features3)
+        assertThat(features4).isEqualTo(features5)
+        assertThat(features4.hashCode()).isEqualTo(features5.hashCode())
+        assertThat(features1).isNotEqualTo(features4)
+        assertThat(features1).isNotEqualTo("not a FeaturesValues")
+        assertThat(features1).isNotEqualTo(null)
+    }
+
+    @Test
+    fun testFeaturesToString() {
+        val short = FeaturesValues("short")
+        assertThat(short.toString()).contains("short")
+
+        val long = FeaturesValues("a".repeat(100))
+        assertThat(long.toString()).contains("...")
+
+        val nullFeatures = FeaturesValues(null)
+        assertThat(nullFeatures.toString()).contains("null")
+    }
+
+    @Test
+    fun testFeaturesTextOrEmpty() {
+        assertThat(FeaturesValues(null).textOrEmpty()).isEqualTo("")
+        assertThat(FeaturesValues("content").textOrEmpty()).isEqualTo("content")
+    }
+
+    @Test
+    fun testFeaturesIsEmpty() {
+        assertThat(FeaturesValues(null).isEmpty).isTrue()
+        assertThat(FeaturesValues("").isEmpty).isTrue()
+        assertThat(FeaturesValues("   ").isEmpty).isTrue()
+        assertThat(FeaturesValues("content").isEmpty).isFalse()
     }
 
     companion object {

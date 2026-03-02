@@ -122,6 +122,19 @@ class ImagesDirectoryTests {
     }
 
     @Test
+    fun testCopyFromEmptySource() {
+        val fs = Jimfs.newFileSystem(Configuration.unix())
+        val memPath = fs.getPath("/TestFont.ufo")
+
+        val writer = UFOWriter(memPath)
+        val targetImages = writer.images()
+
+        val sourceImages = ImagesDirectory(fs.getPath("/nonexistent/images"))
+        targetImages.copyFrom(sourceImages)
+        assertThat(targetImages.exists).isFalse()
+    }
+
+    @Test
     fun testEmptyImagesDirectory() {
         val fs = Jimfs.newFileSystem(Configuration.unix())
         val memPath = fs.getPath("/TestFont.ufo")
