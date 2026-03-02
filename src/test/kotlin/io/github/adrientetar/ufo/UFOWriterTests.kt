@@ -35,6 +35,64 @@ class UFOWriterTests {
     }
 
     @Test
+    fun testGLIFFileNameCollisionAvoidance() {
+        // No collision with empty set
+        assertThat("a".toFileName(emptySet())).isEqualTo("a")
+
+        // No collision when name is not in existing set
+        assertThat("a".toFileName(setOf("b"))).isEqualTo("a")
+
+        // Collision detected — append 15-digit counter
+        val existing = setOf("a")
+        assertThat("a".toFileName(existing)).isEqualTo("a" + "000000000000001")
+
+        // Case-insensitive collision
+        val existingUpper = setOf("a_")
+        assertThat("A".toFileName(existingUpper)).isEqualTo("A_" + "000000000000001")
+    }
+
+    @Test
+    fun testGLIFFileNameMultipleCollisions() {
+        // Multiple collisions increment the counter
+        val existing = mutableSetOf("a", "a000000000000001")
+        assertThat("a".toFileName(existing)).isEqualTo("a" + "000000000000002")
+    }
+
+    @Test
+    fun testWriteGlyphsWithCollision() {
+        // Two glyph names that map to the same filename
+        val fs = Jimfs.newFileSystem(Configuration.unix())
+        val memPath = fs.getPath("/TestFont.ufo")
+
+        // "A" -> "A_" and "A+" -> "A_" (+ is illegal, replaced with _)
+        // These would collide without collision avoidance
+        val glyphA = GlyphValues().apply {
+            name = "A"
+            width = 500f
+        }
+        val glyphAPlus = GlyphValues().apply {
+            name = "A+"
+            width = 600f
+        }
+
+        val writer = UFOWriter(memPath)
+        writer.writeMetaInfo()
+        writer.writeGlyphs(listOf(glyphA, glyphAPlus))
+
+        // Read back and verify both glyphs survived
+        val reader = UFOReader(memPath)
+        val glyphs = reader.readGlyphs().toList()
+        assertThat(glyphs).hasSize(2)
+
+        val names = glyphs.map { it.name }.toSet()
+        assertThat(names).containsExactly("A", "A+")
+
+        val widths = glyphs.associate { it.name to it.width }
+        assertThat(widths["A"]).isEqualTo(500f)
+        assertThat(widths["A+"]).isEqualTo(600f)
+    }
+
+    @Test
     fun testOverwriteExistingFile() {
         val fs = Jimfs.newFileSystem(Configuration.unix())
         val memPath = fs.getPath("/path/to/TestFont.ufo")

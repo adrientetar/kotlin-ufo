@@ -97,11 +97,16 @@ class UFOWriter(
     override fun writeLayerGlyphs(layer: Layer) {
         val glyphsDir = ufo.resolve(layer.directoryName)
 
-        // Gather name to filename mapping (with .glif extension)
-        val contentsDict = layer.glyphs.associateBy(
-            { it.name },
-            { it.name?.toFileName()?.let { "$it.glif" } }
-        )
+        // Gather name to filename mapping (with .glif extension),
+        // handling collisions for names that map to the same file
+        val existing = mutableSetOf<String>()
+        val contentsDict = layer.glyphs.associate { glyph ->
+            val baseName = glyph.name?.toFileName(existing)
+            if (baseName != null) {
+                existing.add(baseName.lowercase())
+            }
+            glyph.name to baseName?.let { "$it.glif" }
+        }
 
         // Create layer directory and write contents.plist
         try {
@@ -252,8 +257,15 @@ class UFOWriter(
     }
 }
 
-// TODO: add existing file names parameter
-internal fun String.toFileName(): String {
+/**
+ * Converts a glyph name to a filename per the UFO spec's
+ * "Common User Name to File Name Algorithm".
+ *
+ * @param existing A case-insensitive set of already-used filenames
+ *  (including any suffix like ".glif"). When non-empty, collision
+ *  avoidance is applied by appending a zero-padded numeric suffix.
+ */
+internal fun String.toFileName(existing: Set<String> = emptySet()): String {
     val filtered = run {
         val b = StringBuilder(length)
 
@@ -274,7 +286,7 @@ internal fun String.toFileName(): String {
         b.toString().take(255)
     }
     // Test for illegal file names
-    val result = filtered
+    var result = filtered
         .split(".")
         .joinToString(".") { part ->
             when (part) {
@@ -282,6 +294,23 @@ internal fun String.toFileName(): String {
                 else -> part
             }
         }
+
+    // Collision avoidance: if the name (case-insensitive) already exists,
+    // append a 15-digit zero-padded counter per the UFO spec.
+    if (existing.isNotEmpty() && result.lowercase() in existing) {
+        // Trim to make room for the 15-digit suffix
+        val maxBase = 255 - 15
+        val base = result.take(maxBase)
+        var counter = 1L
+        while (counter <= 999_999_999_999_999L) {
+            val candidate = base + counter.toString().padStart(15, '0')
+            if (candidate.lowercase() !in existing) {
+                result = candidate
+                break
+            }
+            counter++
+        }
+    }
 
     return result
 }
