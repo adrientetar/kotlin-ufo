@@ -346,4 +346,41 @@ class GlifParserTests {
         assertEquals(4, glif.outline.contours!![0].points.size)
         assertEquals(4, glif.outline.contours!![1].points.size)
     }
+
+    @Test
+    fun `parse interleaved contours and components preserves order`() {
+        val xml = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <glyph name="Aacute" format="2">
+              <outline>
+                <contour>
+                  <point x="0" y="0" type="line"/>
+                  <point x="100" y="0" type="line"/>
+                </contour>
+                <component base="A"/>
+                <contour>
+                  <point x="200" y="200" type="line"/>
+                  <point x="300" y="300" type="line"/>
+                </contour>
+                <component base="acute"/>
+              </outline>
+            </glyph>
+        """.trimIndent()
+
+        val glif = GlifParser.parse(xml)
+
+        // Verify the interleaved order is preserved in elements
+        val elements = glif.outline.elements
+        assertEquals(4, elements.size)
+        assertTrue(elements[0] is Contour)
+        assertTrue(elements[1] is Component)
+        assertEquals("A", (elements[1] as Component).base)
+        assertTrue(elements[2] is Contour)
+        assertTrue(elements[3] is Component)
+        assertEquals("acute", (elements[3] as Component).base)
+
+        // Backward-compatible accessors still work
+        assertEquals(2, glif.outline.components!!.size)
+        assertEquals(2, glif.outline.contours!!.size)
+    }
 }

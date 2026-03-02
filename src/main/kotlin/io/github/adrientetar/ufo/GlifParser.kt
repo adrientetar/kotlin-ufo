@@ -41,8 +41,7 @@ object GlifParser {
         val unicodes = mutableListOf<Unicode>()
         val guidelines = mutableListOf<GlyphGuideline>()
         val anchors = mutableListOf<Anchor>()
-        val components = mutableListOf<Component>()
-        val contours = mutableListOf<Contour>()
+        val outlineElements = mutableListOf<OutlineElement>()
 
         while (reader.hasNext()) {
             when (reader.next()) {
@@ -80,7 +79,7 @@ object GlifParser {
                             anchors.add(parseAnchor(reader))
                         }
                         "outline" -> {
-                            parseOutline(reader, components, contours)
+                            parseOutline(reader, outlineElements)
                         }
                         "lib" -> {
                             // For lib, we extract and parse the plist content
@@ -94,8 +93,7 @@ object GlifParser {
         if (unicodes.isNotEmpty()) glif.unicodes = unicodes
         if (guidelines.isNotEmpty()) glif.guidelines = guidelines
         if (anchors.isNotEmpty()) glif.anchors = anchors
-        if (components.isNotEmpty()) glif.outline.components = components
-        if (contours.isNotEmpty()) glif.outline.contours = contours
+        glif.outline.elements.addAll(outlineElements)
 
         return glif
     }
@@ -136,8 +134,7 @@ object GlifParser {
 
     private fun parseOutline(
         reader: XMLStreamReader,
-        components: MutableList<Component>,
-        contours: MutableList<Contour>
+        elements: MutableList<OutlineElement>
     ) {
         var depth = 1
         var currentContourIdentifier: String? = null
@@ -149,7 +146,7 @@ object GlifParser {
                     depth++
                     when (reader.localName) {
                         "component" -> {
-                            components.add(parseComponent(reader))
+                            elements.add(parseComponent(reader))
                         }
                         "contour" -> {
                             currentContourIdentifier = reader.getAttributeValue(null, "identifier")
@@ -163,7 +160,7 @@ object GlifParser {
                 XMLStreamConstants.END_ELEMENT -> {
                     depth--
                     if (reader.localName == "contour" && currentPoints.isNotEmpty()) {
-                        contours.add(Contour(
+                        elements.add(Contour(
                             identifier = currentContourIdentifier,
                             points = currentPoints.toList()
                         ))

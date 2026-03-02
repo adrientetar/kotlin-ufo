@@ -78,8 +78,6 @@ class GlyphValues(internal val glif: Glif = Glif()) {
     override fun toString(): String = "GlyphValues(name=$name)"
 }
 
-// TODO: it seems like to preserve the order of contour/components, we need to manual parse
-//  see https://github.com/pdvrieze/xmlutil/issues/137
 @Serializable
 @SerialName("glyph")
 data class Glif(
@@ -101,9 +99,11 @@ data class Glif(
     @XmlElement(true)
     @XmlSerialName("anchor", "", "")
     var anchors: List<Anchor>? = null,
-    @XmlElement(true)
-    val outline: Outline = Outline(),
 ) {
+    // outline is handled manually to preserve contour/component interleaving
+    @kotlinx.serialization.Transient
+    val outline: Outline = Outline()
+
     // lib is handled separately due to plist-in-XML format
     @kotlinx.serialization.Transient
     var lib: GlifLib? = null
@@ -122,17 +122,41 @@ data class Unicode(
     val hex: String
 )
 
-@Serializable
-@SerialName("outline")
-data class Outline(
-    @XmlElement(true)
-    @XmlSerialName("component", "", "")
-    var components: List<Component>? = null,
+/**
+ * A sealed interface for elements within an [Outline].
+ *
+ * This allows components and contours to be stored in a single ordered list,
+ * preserving the interleaved order from the source GLIF file.
+ */
+sealed interface OutlineElement
 
-    @XmlElement(true)
-    @XmlSerialName("contour", "", "")
-    var contours: List<Contour>? = null
-)
+data class Outline(
+    var elements: MutableList<OutlineElement> = mutableListOf()
+) {
+    /**
+     * All components in this outline, in the order they appear among [elements].
+     *
+     * Setting this replaces all existing components (preserving contour positions).
+     */
+    var components: List<Component>?
+        get() = elements.filterIsInstance<Component>().ifEmpty { null }
+        set(value) {
+            elements.removeAll { it is Component }
+            value?.let { elements.addAll(it) }
+        }
+
+    /**
+     * All contours in this outline, in the order they appear among [elements].
+     *
+     * Setting this replaces all existing contours (preserving component positions).
+     */
+    var contours: List<Contour>?
+        get() = elements.filterIsInstance<Contour>().ifEmpty { null }
+        set(value) {
+            elements.removeAll { it is Contour }
+            value?.let { elements.addAll(it) }
+        }
+}
 
 @Serializable
 @SerialName("component")
@@ -145,7 +169,7 @@ data class Component(
     val xOffset: Float? = null,
     val yOffset: Float? = null,
     val identifier: String? = null
-)
+) : OutlineElement
 
 @Serializable
 @SerialName("contour")
@@ -154,7 +178,7 @@ data class Contour(
     @XmlElement(true)
     @XmlSerialName("point", "", "")
     val points: List<Point> = emptyList()
-)
+) : OutlineElement
 
 @Serializable
 @SerialName("point")

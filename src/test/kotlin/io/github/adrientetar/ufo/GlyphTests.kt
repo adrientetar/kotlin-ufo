@@ -179,4 +179,41 @@ class GlyphTests {
             assertThat(glyph.unicodes).isEqualTo(listOf(0x0020))
         }
     }
+
+    @Test
+    fun `round-trip preserves interleaved contour-component order`() {
+        val fs = Jimfs.newFileSystem(Configuration.unix())
+        val ufoPath = fs.getPath("/interleaved.ufo")
+        Files.createDirectories(ufoPath)
+
+        // Write a glyph with interleaved contours and components
+        val writer = UFOWriter(ufoPath)
+        val glyph = GlyphValues()
+        glyph.name = "Aacute"
+        glyph.unicodes = listOf(0x00C1)
+        glyph.width = 600f
+        glyph.glif.outline.elements.addAll(listOf(
+            Contour(points = listOf(Point(0f, 0f, "line"), Point(100f, 0f, "line"))),
+            Component(base = "A"),
+            Contour(points = listOf(Point(200f, 200f, "line"), Point(300f, 300f, "line"))),
+            Component(base = "acute"),
+        ))
+        writer.writeGlyphs(listOf(glyph))
+        writer.close()
+
+        // Read it back
+        val reader = UFOReader(ufoPath)
+        val readGlyphs = reader.readGlyphs().toList()
+        assertThat(readGlyphs).hasSize(1)
+
+        val readGlyph = readGlyphs[0]
+        val elements = readGlyph.glif.outline.elements
+        assertThat(elements).hasSize(4)
+        assertThat(elements[0]).isInstanceOf(Contour::class.java)
+        assertThat(elements[1]).isInstanceOf(Component::class.java)
+        assertThat((elements[1] as Component).base).isEqualTo("A")
+        assertThat(elements[2]).isInstanceOf(Contour::class.java)
+        assertThat(elements[3]).isInstanceOf(Component::class.java)
+        assertThat((elements[3] as Component).base).isEqualTo("acute")
+    }
 }

@@ -127,4 +127,68 @@ class UFOWriterTests {
         assertThat(meta.creator).isEqualTo("dev.adrientetar.kotlin.ufo")
         assertThat(meta.formatVersion).isEqualTo(3)
     }
+
+    @Test
+    fun `serializeOutline preserves interleaved order`() {
+        val outline = Outline()
+        outline.elements.addAll(listOf(
+            Contour(points = listOf(Point(0f, 0f, "line"))),
+            Component(base = "A", xOffset = 10f),
+            Contour(identifier = "c2", points = listOf(Point(100f, 200f, "curve", "yes"))),
+            Component(base = "acute"),
+        ))
+
+        val xml = UFOWriter.serializeOutline(outline)!!
+        assertThat(xml).contains("<contour>")
+        assertThat(xml).contains("<component base=\"A\"")
+
+        // Verify ordering: first contour before component A, component A before second contour
+        val contour1Pos = xml.indexOf("<contour>")
+        val componentAPos = xml.indexOf("<component base=\"A\"")
+        val contour2Pos = xml.indexOf("<contour identifier=\"c2\">")
+        val componentAcutePos = xml.indexOf("<component base=\"acute\"")
+
+        assertThat(contour1Pos).isLessThan(componentAPos)
+        assertThat(componentAPos).isLessThan(contour2Pos)
+        assertThat(contour2Pos).isLessThan(componentAcutePos)
+    }
+
+    @Test
+    fun `serializeOutline returns null for empty outline`() {
+        val outline = Outline()
+        assertThat(UFOWriter.serializeOutline(outline)).isNull()
+    }
+
+    @Test
+    fun `serializeOutline writes component attributes`() {
+        val outline = Outline()
+        outline.elements.add(Component(
+            base = "A",
+            xScale = 1f,
+            xyScale = 0f,
+            yxScale = 0f,
+            yScale = 1f,
+            xOffset = 10f,
+            yOffset = 20f,
+            identifier = "comp1"
+        ))
+
+        val xml = UFOWriter.serializeOutline(outline)!!
+        assertThat(xml).contains("base=\"A\"")
+        assertThat(xml).contains("xScale=\"1\"")
+        assertThat(xml).contains("xOffset=\"10\"")
+        assertThat(xml).contains("yOffset=\"20\"")
+        assertThat(xml).contains("identifier=\"comp1\"")
+    }
+
+    @Test
+    fun `serializeOutline writes point smooth attribute`() {
+        val outline = Outline()
+        outline.elements.add(Contour(points = listOf(
+            Point(100f, 200f, "curve", "yes"),
+        )))
+
+        val xml = UFOWriter.serializeOutline(outline)!!
+        assertThat(xml).contains("smooth=\"yes\"")
+    }
 }

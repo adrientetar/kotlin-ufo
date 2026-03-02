@@ -232,12 +232,17 @@ class UFOWriter(
     private fun Path.writeGlif(glif: Glif) {
         try {
             var content = niceXML.encodeToString(glif)
-            
+
+            // Insert outline element before </glyph> (preserving element order)
+            val outlineXml = serializeOutline(glif.outline)
+            if (outlineXml != null) {
+                content = content.replace("</glyph>", "$outlineXml\n</glyph>")
+            }
+
             // Append lib element if present and non-empty
             val lib = glif.lib
             if (lib != null && lib.content.count() > 0) {
                 val libXml = serializeLibToXml(lib.content)
-                // Insert lib before closing </glyph> tag
                 content = content.replace("</glyph>", "$libXml\n</glyph>")
             }
             
@@ -253,6 +258,61 @@ class UFOWriter(
             Files.writeString(this, content)
         } catch (ex: Exception) {
             throw UFOLibException("Failed to write $name", ex)
+        }
+    }
+
+    companion object {
+        /**
+         * Serialize an [Outline] to an XML string, preserving the interleaved
+         * order of components and contours. Returns null if the outline is empty.
+         */
+        internal fun serializeOutline(outline: Outline): String? {
+            if (outline.elements.isEmpty()) return null
+            val sb = StringBuilder()
+            sb.appendLine("  <outline>")
+            for (element in outline.elements) {
+                when (element) {
+                    is Component -> {
+                        sb.append("    <component base=\"${element.base}\"")
+                        element.xScale?.let { sb.append(" xScale=\"${formatFloat(it)}\"") }
+                        element.xyScale?.let { sb.append(" xyScale=\"${formatFloat(it)}\"") }
+                        element.yxScale?.let { sb.append(" yxScale=\"${formatFloat(it)}\"") }
+                        element.yScale?.let { sb.append(" yScale=\"${formatFloat(it)}\"") }
+                        element.xOffset?.let { sb.append(" xOffset=\"${formatFloat(it)}\"") }
+                        element.yOffset?.let { sb.append(" yOffset=\"${formatFloat(it)}\"") }
+                        element.identifier?.let { sb.append(" identifier=\"$it\"") }
+                        sb.appendLine("/>")
+                    }
+                    is Contour -> {
+                        if (element.identifier != null) {
+                            sb.appendLine("    <contour identifier=\"${element.identifier}\">")
+                        } else {
+                            sb.appendLine("    <contour>")
+                        }
+                        for (point in element.points) {
+                            sb.append("      <point")
+                            sb.append(" x=\"${formatFloat(point.x)}\"")
+                            sb.append(" y=\"${formatFloat(point.y)}\"")
+                            point.type?.let { sb.append(" type=\"$it\"") }
+                            point.smooth?.let { sb.append(" smooth=\"$it\"") }
+                            point.name?.let { sb.append(" name=\"$it\"") }
+                            point.identifier?.let { sb.append(" identifier=\"$it\"") }
+                            sb.appendLine("/>")
+                        }
+                        sb.appendLine("    </contour>")
+                    }
+                }
+            }
+            sb.append("  </outline>")
+            return sb.toString()
+        }
+
+        private fun formatFloat(value: Float): String {
+            return if (value == value.toLong().toFloat()) {
+                value.toLong().toString()
+            } else {
+                value.toString()
+            }
         }
     }
 }
