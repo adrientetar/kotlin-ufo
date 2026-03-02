@@ -17,7 +17,7 @@ import kotlin.io.path.writeBytes
  * The images directory contains PNG images that can be referenced by glyph image elements.
  * All images must be in PNG format. Subdirectories are not allowed.
  */
-class ImagesDirectory internal constructor(private val imagesPath: Path) {
+class ImagesDirectory(private val imagesPath: Path) {
 
     /**
      * Returns true if the images directory exists.

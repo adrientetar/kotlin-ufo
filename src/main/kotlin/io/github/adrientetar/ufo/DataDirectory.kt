@@ -28,7 +28,7 @@ import kotlin.io.path.writeBytes
  *
  * The pattern "public.*" is reserved for standardized directory and file names.
  */
-class DataDirectory internal constructor(private val dataPath: Path) {
+class DataDirectory(private val dataPath: Path) {
 
     /**
      * Returns true if the data directory exists.

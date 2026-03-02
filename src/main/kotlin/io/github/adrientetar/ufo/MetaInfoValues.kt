@@ -2,7 +2,6 @@ package io.github.adrientetar.ufo
 
 import com.dd.plist.NSDictionary
 
-// TODO: make internal and extract an interface for the public API
 class MetaInfoValues(internal val dict: NSDictionary = NSDictionary()) {
     var creator: String
         get() = dict.getString("creator")

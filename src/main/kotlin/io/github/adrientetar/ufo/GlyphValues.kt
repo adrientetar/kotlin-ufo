@@ -6,7 +6,6 @@ import kotlinx.serialization.Serializable
 import nl.adaptivity.xmlutil.serialization.XmlElement
 import nl.adaptivity.xmlutil.serialization.XmlSerialName
 
-// TODO: make internal and extract an interface for the public API
 class GlyphValues(internal val glif: Glif = Glif()) {
     var anchors: List<Anchor>?
         get() = glif.anchors

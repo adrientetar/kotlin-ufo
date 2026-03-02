@@ -258,6 +258,76 @@ class LayerTests {
     }
 
     @Test
+    fun testReadLayers() {
+        val ufo = Paths.get(getResourceURI("/TestFont.ufo"))
+        val reader = UFOReader(ufo)
+
+        val layers = reader.readLayers()
+        assertThat(layers).hasSize(2)
+
+        // Default layer
+        assertThat(layers[0].name).isEqualTo("public.default")
+        assertThat(layers[0].directoryName).isEqualTo("fore")
+        assertThat(layers[0].isDefault).isFalse() // "fore" != "glyphs"
+        assertThat(layers[0].glyphs).isNotEmpty()
+        assertThat(layers[0].glyphNames()).contains("a")
+
+        // Background layer
+        assertThat(layers[1].name).isEqualTo("public.background")
+        assertThat(layers[1].directoryName).isEqualTo("glyphs.background")
+        assertThat(layers[1].glyphs).hasSize(1)
+        assertThat(layers[1].glyphNames()).containsExactly("a")
+        assertThat(layers[1].info).isNotNull()
+        assertThat(layers[1].info!!.color).isEqualTo("0,0,1,0.5")
+    }
+
+    @Test
+    fun testReadGlyphsByLayerName() {
+        val ufo = Paths.get(getResourceURI("/TestFont.ufo"))
+        val reader = UFOReader(ufo)
+
+        val backgroundGlyphs = reader.readGlyphs("public.background").toList()
+        assertThat(backgroundGlyphs).hasSize(1)
+        assertThat(backgroundGlyphs[0].name).isEqualTo("a")
+    }
+
+    @Test
+    fun testReadGlyphsNonexistentLayer() {
+        val ufo = Paths.get(getResourceURI("/TestFont.ufo"))
+        val reader = UFOReader(ufo)
+
+        val glyphs = reader.readGlyphs("nonexistent.layer").toList()
+        assertThat(glyphs).isEmpty()
+    }
+
+    @Test
+    fun testReadLayersRoundTrip() {
+        val fs = Jimfs.newFileSystem(Configuration.unix())
+        val memPath = fs.getPath("/TestFont.ufo")
+
+        // Read layers from sample font
+        val ufo = Paths.get(getResourceURI("/TestFont.ufo"))
+        val originalReader = UFOReader(ufo)
+        val layers = originalReader.readLayers()
+
+        // Write them back
+        val writer = UFOWriter(memPath)
+        writer.writeLayers(layers)
+        writer.writeLib(originalReader.readLib())
+
+        // Read back and verify
+        val reader = UFOReader(memPath)
+        val roundTrippedLayers = reader.readLayers()
+
+        assertThat(roundTrippedLayers).hasSize(layers.size)
+        for (i in layers.indices) {
+            assertThat(roundTrippedLayers[i].name).isEqualTo(layers[i].name)
+            assertThat(roundTrippedLayers[i].glyphs.size).isEqualTo(layers[i].glyphs.size)
+            assertThat(roundTrippedLayers[i].info?.color).isEqualTo(layers[i].info?.color)
+        }
+    }
+
+    @Test
     fun testWriteLayerInfoNotWrittenWhenEmpty() {
         val fs = Jimfs.newFileSystem(Configuration.unix())
         val memPath = fs.getPath("/TestFont.ufo")

@@ -149,10 +149,60 @@ class UFOReader(
     fun readGlyphs(): Sequence<GlyphValues> {
         // Read foreground layer directory from layer contents
         val layerContents = readLayerContents()
-        val foregroundDir = (layerContents.firstOrNull()?.second ?: Layer.DEFAULT_DIRECTORY) + "/"
+        val foregroundDir = (layerContents.firstOrNull()?.second ?: Layer.DEFAULT_DIRECTORY)
 
-        // Read glyph names according to glyph order
-        val contentsDict = ufo.resolve(foregroundDir + "contents.plist")
+        return readGlyphsFromDirectory(foregroundDir)
+    }
+
+    /**
+     * Reads glyphs from a specific layer.
+     *
+     * @param layerName The name of the layer to read glyphs from
+     * @return A sequence of glyph values, or an empty sequence if the layer doesn't exist
+     */
+    fun readGlyphs(layerName: String): Sequence<GlyphValues> {
+        val layerContents = readLayerContents()
+        val directoryName = layerContents.find { it.first == layerName }?.second
+            ?: return sequenceOf()
+
+        return readGlyphsFromDirectory(directoryName)
+    }
+
+    /**
+     * Reads all layers with their glyphs and metadata.
+     *
+     * This is the symmetric counterpart to [UFOWriter.writeLayers], enabling round-trip
+     * workflows:
+     * ```kotlin
+     * val reader = UFOReader(inputPath)
+     * val layers = reader.readLayers()
+     *
+     * val writer = UFOWriter(outputPath)
+     * writer.writeLayers(layers)
+     * ```
+     *
+     * @return List of layers with their glyphs and layer info
+     */
+    fun readLayers(): List<Layer> {
+        val layerContents = readLayerContents()
+
+        return layerContents.map { (layerName, directoryName) ->
+            val glyphs = readGlyphsFromDirectory(directoryName).toMutableList()
+            val info = readLayerInfo(directoryName)
+
+            Layer(
+                name = layerName,
+                directoryName = directoryName,
+                glyphs = glyphs,
+                info = info
+            )
+        }
+    }
+
+    private fun readGlyphsFromDirectory(directoryName: String): Sequence<GlyphValues> {
+        val dirPrefix = "$directoryName/"
+
+        val contentsDict = ufo.resolve(dirPrefix + "contents.plist")
             .readPlist(NSObject::toMapOfStrings) ?: return sequenceOf()
         val lib = readLib()
         val glyphNames = ufoGlyphOrder(
@@ -163,7 +213,7 @@ class UFOReader(
         return sequence {
             // `mapNotNull` will protect us against missing glyphs in the glyph order
             for (glifFileName in glyphNames.mapNotNull { contentsDict[it] }) {
-                val glifPath = ufo.resolve(foregroundDir + glifFileName)
+                val glifPath = ufo.resolve(dirPrefix + glifFileName)
                 val glifXml = glifPath.readTextOrNull()
                 val glif = glifXml?.let {
                     try {

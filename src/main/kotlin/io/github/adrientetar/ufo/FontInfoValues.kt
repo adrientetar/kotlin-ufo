@@ -4,7 +4,6 @@ import com.dd.plist.NSArray
 import com.dd.plist.NSDictionary
 import java.time.OffsetDateTime
 
-// TODO: make internal and extract an interface for the public API
 class FontInfoValues(internal val dict: NSDictionary = NSDictionary()) {
     fun containsKey(key: String): Boolean =
         dict.containsKey(key)

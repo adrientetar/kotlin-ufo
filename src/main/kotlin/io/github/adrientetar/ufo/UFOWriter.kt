@@ -34,6 +34,12 @@ class UFOWriter(
         }
     }
 
+    /**
+     * Clears and recreates the UFO directory.
+     *
+     * This is not part of [UFOFormatWriter] because it is a setup concern specific to
+     * directory-based UFOs. For UFOZ, the output file is always written fresh on [close].
+     */
     @OptIn(ExperimentalPathApi::class)
     fun clearDirectory() {
         // Clear out the folder, if it exists

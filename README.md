@@ -63,7 +63,35 @@ val info = FontInfoValues().apply {
 }
 
 val writer = UFOWriter(path)
+writer.writeMetaInfo()
 writer.writeFontInfo(info)
+```
+
+### Round-trip
+
+Read all layers from one UFO and write them to another, using the
+`UFOFormatWriter` interface to target either `.ufo` or `.ufoz`:
+
+```kotlin
+import io.github.adrientetar.ufo.*
+import java.nio.file.Paths
+
+val input = Paths.get("MyFont-Regular.ufo")
+val output = Paths.get("MyFont-Regular.ufoz")
+
+val reader = UFOReader(input)
+
+// UFOFormatWriter lets you write to .ufo or .ufoz interchangeably
+val writer: UFOFormatWriter = UFOZWriter.open(output)
+writer.use {
+    it.writeMetaInfo()
+    it.writeFontInfo(reader.readFontInfo())
+    it.writeLayers(reader.readLayers())
+    it.writeGroups(reader.readGroups())
+    it.writeKerning(reader.readKerning())
+    it.writeLib(reader.readLib())
+    it.writeFeatures(reader.readFeatures())
+}
 ```
 
 See [the tests](/src/test/kotlin/io/github/adrientetar/ufo) for more sample code.
@@ -83,6 +111,8 @@ Supported features
 | `glyphs/` | ✅ Read/Write (all GLIF elements) |
 | `images/` directory | ✅ Read/Write (PNG images) |
 | `data/` directory | ✅ Read/Write (arbitrary data) |
+| `UFOFormatWriter` | ✅ Shared interface for UFO/UFOZ writing |
+| `readLayers()` / `readGlyphs(layerName)` | ✅ Full round-trip layer support |
 
 **GLIF support:** advance, unicode, anchor, outline (contour, component, point), lib, note, image, guideline, and identifier attributes.
 
