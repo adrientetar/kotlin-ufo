@@ -25,7 +25,7 @@ repositories {
 }
 
 dependencies {
-    implementation("io.github.adrientetar:kotlin-ufo:1.1.0")
+    implementation("io.github.adrientetar:kotlin-ufo:1.2.0")
 }
 ```
 
